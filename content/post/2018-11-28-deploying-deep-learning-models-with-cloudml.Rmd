@@ -1,0 +1,319 @@
+---
+title: Deploying Deep Learning Models with CloudML
+author: ''
+date: '2018-11-28'
+slug: deploying-deep-learning-models-with-cloudml
+categories:
+  - R
+tags:
+  - deep learning
+  - keras
+  - cloudml
+---
+
+In this post we will go over deploying deep learning models to Google's [cloud machine learning engine](https://cloud.google.com/ml-engine/). We'll be using the `keras` and `cloudml` packages. 
+
+The `cloudml` package built by the good people of RSudio allows us to train deep learning models built with `keras` and `tensorflow` in the cloud. It also allows the deployment of trained models to the Google global prediction platform, which we can use to make predictions with a simple API call.
+
+## Getting started with Google Cloud
+Before you can begin training models with CloudML you need to have a Google Cloud Account. If you don't already have an account you can create one at https://console.cloud.google.com.
+
+The account creation process will lead you through creating a new project. To enable the Machine Learning API for this project navigate to the “ML Engine” menu on the left. Doing this for the first time will enable the ML API and allow you to submit ML jobs.
+
+## Installing the `cloudml` package
+Install the `cloudml` package from CRAN as follows:
+
+```{r eval = FALSE}
+install.packages("cloudml")
+```
+
+You'll need to install the Google Cloud SDK, a set of utilties that enable you to interact with your Google Cloud account from within R. You can install the SDK using the `gcloud_install()` function.
+
+```{r warning = FALSE, message = FALSE}
+library(cloudml)
+# gcloud_install() -- I've already done this step
+```
+
+Note that in order to ensure that the `cloudml` package can find your installation of the SDK you should accept the default installation location (~/) suggested within the installer.
+
+As part of the installation you are asked to specify a default account, project, and compute region for Google Cloud. These settings are then used automatically for all CloudML jobs. To change the default account, project, or region you can use the `gcloud_init()` function.
+
+## Training a model on CloudML
+Let's say that we have already built a keras model in a file called `tagger.R`. All of the code in this file can be seen below.
+
+```{r eval = FALSE}
+# load packages
+library(keras)
+library(cloudml)
+
+
+# data collection ---------------------------------------------------------
+
+# load messages
+messages <- readRDS("clean_hs_messages.rds")
+
+# load data for training
+one_hot_results <- readRDS("hs_one_hot_results.rds")
+
+# load labels
+label_matrix <- readRDS("hs_label_matrix.rds")
+
+
+# data partitioning -------------------------------------------------------
+
+# set maximimum number of words to consider
+max_words <- 10000
+
+# define labels
+labels <- as.numeric(as.factor(messages$custom_field_label)) - 1
+
+# get number of distinct labels
+num_classes <- max(labels) + 1
+
+# split data into training and testing sets
+indices <- sample(1:nrow(messages))
+
+# define number of training samples
+training_samples = round(nrow(messages) * 0.7, 0)
+validation_samples = nrow(messages) - training_samples
+
+# set training and testing indeces
+training_indices <- indices[1:training_samples]
+validation_indices <- indices[(training_samples + 1): (training_samples + validation_samples)]
+
+# create training set
+x_train <- one_hot_results[training_indices,]
+y_train <- label_matrix[training_indices,]
+
+# create validation set
+x_val <- one_hot_results[validation_indices,]
+y_val <- label_matrix[validation_indices,]
+
+
+# model building ----------------------------------------------------------
+
+
+model <- keras_model_sequential() %>% 
+  layer_dense(units = 32, activation = "relu", input_shape = c(max_words)) %>% 
+  layer_dropout(rate = 0.3) %>% 
+  layer_dense(units = 32, activation = "relu") %>% 
+  layer_dropout(rate = 0.2) %>% 
+  layer_dense(units = num_classes) %>% 
+  layer_activation(activation = 'softmax')
+
+model %>% compile(
+  optimizer = "rmsprop",
+  loss = "categorical_crossentropy",
+  metrics = c("accuracy")
+)
+
+model %>% fit(
+  one_hot_results, label_matrix,
+  batch_size = 256,
+  epochs = 10,
+  verbose = 1,
+  validation_split = 0.3
+)
+
+```
+
+Once we've onfirmed that things work as expected locally, we can submit a CloudML job to perform training in the cloud with the `cloud_train()` function. In our case we would run the following:
+
+```{r eval = FALSE}
+# train the helpscout tagger model
+tagger_job <- cloudml_train("tagger.R")
+```
+
+All of the files within the current working directory will be bundled up and sent along with the script to CloudML.
+
+Note that the very first time you submit a job to CloudML the various packages required to run your script will be compiled from source. This will make the execution time of the job considerably longer that you might expect. It’s only the first job that incurs this overhead though (since the package installations are cached), and subsequent jobs will run more quickly.
+
+The status of the job can be viewed in the RStudio console:
+
+![](/post/2018-11-28-deploying-deep-learning-models-with-cloudml_files/Screen Shot 2018-11-28 at 1.00.13 PM.png){width=100%}
+
+## Collecting Results
+When the job is complete, training results can be collected back to your local system (this is done automatically when monitoring the job using a background terminal in RStudio). A run report is displayed after the job is collected:
+
+![](/post/2018-11-28-deploying-deep-learning-models-with-cloudml_files/Screen Shot 2018-11-28 at 2.11.13 PM.png){width=100%}
+
+## Deploying the Model
+You can host your trained machine learning models in the cloud and use the Cloud ML prediction service to infer target values for new data. The Cloud ML prediction service makes use of models exported through the `export_savedmodel()` function.
+
+Once we have trained our model, we can export it with the following command:
+
+```{r eval = FALSE}
+export_savedmodel(model, "helpscoutTagger")
+```
+
+Deployment is performed through `cloudml_deploy()` which uses the same gcloud and cloudml configuration concepts used while training. We can train any exported model by running:
+
+```{r eval = FALSE}
+cloudml_deploy("helpscoutTagger", name = "helpscout_tagger")
+```
+
+## Prediction
+Once a model is deployed, predictions can be performed by providing a list of inputs into `cloudml_predict()`. Note that none of the code above has actually been executed. We'll try to make predictions in this session simply by providing a new input to the deployed model.
+
+```{r include = FALSE, warning = FALSE, message = FALSE, eval = FALSE}
+# load libraries
+library(keras)
+library(openssl)
+library(tidyr)
+library(scales)
+library(buffer)
+library(dplyr)
+library(stringr)
+
+# function to collect messages and tags
+get_messages <- function() {
+  
+  # connect to redshift
+  con <- redshift_connect()
+  
+  # define the query
+  message_query <- "
+    select 
+      m.id as message_id
+      , m.conversation_id
+      , m.created_at
+      , m.created_by_first_name
+      , m.created_by_last_name
+      , m.was_created_by_customer
+      , c.mailbox_name
+      , c.tags
+      , c.created_by_type
+      , c.subject
+      , c.preview
+      , f.created_at as custom_field_created_at
+      , f.name as custom_field_type
+      , f.option_label as custom_field_label
+      , m.body
+      , rank() over (partition by m.conversation_id order by m.created_at) as message_rank
+      , rank() over (partition by m.id order by f.created_at) as custom_field_rank
+    from dbt.helpscout_messages as m
+    inner join dbt.helpscout_conversations as c
+    on c.id = m.conversation_id
+    and m.was_created_by_customer
+    left join dbt.helpscout_custom_fields as f
+    on c.id = f.conversation_id
+    where custom_field_label is not null
+    and created_by_type = 'customer'
+    group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+  "
+  
+  # query redshift
+  messages <- query_db(message_query, con)
+  
+  # return messages with tags
+  messages
+}
+
+
+# function to clean the data
+clean_data <- function(df) {
+  
+  # set rank as integer
+  df$message_rank <- as.integer(df$message_rank)
+  df$custom_field_rank <- as.integer(df$custom_field_rank)
+  
+  # look only at area tags for now
+  df <- filter(df, custom_field_type == 'AREA')
+  
+  # filter to only include first message
+  df <- filter(df, message_rank == 1)
+  
+  # only include first custom field label for now
+  # df <- filter(df, custom_field_rank == 1)
+  
+  # get full name
+  df$full_name <- paste(df$created_by_first_name, df$created_by_last_name)
+  
+  # merge uncategorized
+  df$custom_field_label <- gsub("Uncategorized", "uncategorized", df$custom_field_label)
+  
+  # merge feature requests
+  df$custom_field_label <- gsub("feature requests", "feature request", df$custom_field_label)
+  
+  # merge composing tags
+  df$custom_field_label <- gsub("composition", "composing", df$custom_field_label)
+  
+  # merge org tags
+  df$custom_field_label <- gsub("org-setup", "org-maintenance", df$custom_field_label)
+  
+  # merge Instagram tags
+  df$custom_field_label[df$custom_field_label == "Instagram (BUG)"] <- "Instagram"
+  df$custom_field_label[df$custom_field_label == "Instagram (FEEDBACK)"] <- "Instagram"
+  
+  # filter out certain labels
+  df <- df %>% 
+    filter(custom_field_label != "success" & 
+             custom_field_label != "extension - multiple composer")
+  
+  # remove emails from bufferbot
+  df <- filter(df, full_name != "Updates Buffer" & full_name != "Stephanie Lee")
+  
+  # remove html df and line breaks from body
+  df <- df %>% 
+    mutate(text = gsub("<.*?>", " ", body),
+           text = gsub("\\n", " ", text),
+           text = paste(text, mailbox_name, subject, preview), 
+           text = str_squish(text),
+           text = trimws(text)) %>% 
+    filter(text != "" & !is.na(text) &
+             subject != "For Church Affiliate") %>% 
+    filter(!grepl("Body Translation Powered", text))
+  
+  # return dataframe
+  df
+}
+
+# get raw data
+raw_messages <- get_messages()
+
+# clean data
+messages <- clean_data(raw_messages)
+
+saveRDS(messages, file = "clean_hs_messages.rds")
+
+# get the text of the messages
+text <- messages$text
+
+# set maximimum number of words to consider
+max_words <- 10000
+
+# create a tokenizer and only consider the top 10000 words
+tokenizer <- text_tokenizer(num_words = max_words) %>%
+  fit_text_tokenizer(text) 
+
+# save tokenizer
+save_text_tokenizer(tokenizer, "helpscout_tokenizer")
+```
+
+
+```{r message = FALSE, warning = FALSE}
+library(keras)
+
+# load tokenizer
+tokenizer <- load_text_tokenizer('helpscout_tokenizer')
+
+# explicitly name labels
+label_names <- c('analytics', 'API', 'billing', 'composing', 'extension', 
+                 'feature request', 'Instagram', 'onboarding','org-maintenance',
+                 'posting', 'profile-connection','profile-maintenance', 
+                 'reply-support', 'scheduling', 'social media advice',
+                 'uncategorized', 'user-authorization', 'user-maintenance')
+
+
+# set new text to predict labels for 
+new_text <- "my Instagram profile keeps getting disconnected"
+
+# one-hot encode the text
+one_hot <- texts_to_matrix(tokenizer, as.array(new_text), mode = "binary")
+
+# make predictions
+cloudml_predict(list(as.vector(t(one_hot))),
+  name = "helpscout_tagger",
+)
+```
+

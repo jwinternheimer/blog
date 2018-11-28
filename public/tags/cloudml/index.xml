@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Cloudml on A Data Blog</title>
+    <link>/tags/cloudml/</link>
+    <description>Recent content in Cloudml on A Data Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 28 Nov 2018 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/tags/cloudml/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Deploying Deep Learning Models with CloudML</title>
+      <link>/2018/11/28/deploying-deep-learning-models-with-cloudml/</link>
+      <pubDate>Wed, 28 Nov 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/2018/11/28/deploying-deep-learning-models-with-cloudml/</guid>
+      <description>In this post we will go over deploying deep learning models to Google’s cloud machine learning engine. We’ll be using the keras and cloudml packages.
+The cloudml package built by the good people of RSudio allows us to train deep learning models built with keras and tensorflow in the cloud. It also allows the deployment of trained models to the Google global prediction platform, which we can use to make predictions with a simple API call.</description>
+    </item>
+    
+  </channel>
+</rss>
