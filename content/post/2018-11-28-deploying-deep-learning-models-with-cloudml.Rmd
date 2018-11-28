@@ -317,3 +317,7 @@ cloudml_predict(list(as.vector(t(one_hot))),
 )
 ```
 
+We have a set of predictions that we can associate with the label names!
+
+Documentation
+More documentation on model deployment can be found on [RStudio's site](https://tensorflow.rstudio.com/tools/cloudml/articles/deployment.html). You can find more information about training models in the cloud [here](https://tensorflow.rstudio.com/tools/cloudml/articles/training.html).
