@@ -13,7 +13,7 @@ tags:
 
 
 
-<p>In this post we will go over deploying deep learning models to Google’s <a href="https://cloud.google.com/ml-engine/">cloud machine learning engine</a>. We’ll be using the <code>keras</code> and <code>cloudml</code> packages.</p>
+<p>In this post we will go over deploying deep learning models to Google’s <a href="https://cloud.google.com/ml-engine/">cloud machine learning engine</a> in R with the <code>keras</code> and <code>cloudml</code> packages.</p>
 <p>The <code>cloudml</code> package built by the good people of RSudio allows us to train deep learning models built with <code>keras</code> and <code>tensorflow</code> in the cloud. It also allows the deployment of trained models to the Google global prediction platform, which we can use to make predictions with a simple API call.</p>
 <div id="getting-started-with-google-cloud" class="section level2">
 <h2>Getting started with Google Cloud</h2>
@@ -108,13 +108,19 @@ model %&gt;% fit(
 <p>Once we’ve onfirmed that things work as expected locally, we can submit a CloudML job to perform training in the cloud with the <code>cloud_train()</code> function. In our case we would run the following:</p>
 <pre class="r"><code># train the helpscout tagger model
 tagger_job &lt;- cloudml_train(&quot;tagger.R&quot;)</code></pre>
-<p>All of the files within the current working directory will be bundled up and sent along with the script to CloudML.</p>
+<p>All of the files within the current working directory will be bundled up and sent along with the script to CloudML. The <code>cloudml</code> package discovers all the dependencies (<code>dplyr</code>, etc) and uses <code>packrat</code> to get the corresponding packages and install those on the CloudML service.</p>
 <p>Note that the very first time you submit a job to CloudML the various packages required to run your script will be compiled from source. This will make the execution time of the job considerably longer that you might expect. It’s only the first job that incurs this overhead though (since the package installations are cached), and subsequent jobs will run more quickly.</p>
 <p>The status of the job can be viewed in the RStudio console:</p>
 <div class="figure">
 <img src="/post/2018-11-28-deploying-deep-learning-models-with-cloudml_files/Screen%20Shot%202018-11-28%20at%201.00.13%20PM.png" style="width:100.0%" />
 
 </div>
+<p>You can use the link in the R console to view the job in the Google Cloud Platform.</p>
+<div class="figure">
+<img src="http://hi.buffer.com/cbbb1c7d992b/Screen%252520Recording%2525202018-11-28%252520at%25252003.20%252520PM.gif" style="width:100.0%" />
+
+</div>
+<p>You can also view the logs from this page.</p>
 </div>
 <div id="collecting-results" class="section level2">
 <h2>Collecting Results</h2>
@@ -126,11 +132,16 @@ tagger_job &lt;- cloudml_train(&quot;tagger.R&quot;)</code></pre>
 </div>
 <div id="deploying-the-model" class="section level2">
 <h2>Deploying the Model</h2>
-<p>You can host your trained machine learning models in the cloud and use the Cloud ML prediction service to infer target values for new data. The Cloud ML prediction service makes use of models exported through the <code>export_savedmodel()</code> function.</p>
+<p>You can host your trained machine learning models in the cloud and use the Cloud ML prediction service to make predictions for new data. The Cloud ML prediction service makes use of models exported through the <code>export_savedmodel()</code> function.</p>
 <p>Once we have trained our model, we can export it with the following command:</p>
 <pre class="r"><code>export_savedmodel(model, &quot;helpscoutTagger&quot;)</code></pre>
 <p>Deployment is performed through <code>cloudml_deploy()</code> which uses the same gcloud and cloudml configuration concepts used while training. We can train any exported model by running:</p>
 <pre class="r"><code>cloudml_deploy(&quot;helpscoutTagger&quot;, name = &quot;helpscout_tagger&quot;)</code></pre>
+<p>Once the models are registered, they are available in a central repository for your organization to consume and maintain. You can view the models in the “Models” section of the Google Cloud Platform. From here you can also monitor all the calls to the model, so that you can understand how the models are being used.</p>
+<div class="figure">
+<img src="http://hi.buffer.com/7e8f0e3820d8/Screen%252520Recording%2525202018-11-28%252520at%25252003.24%252520PM.gif" style="width:100.0%" />
+
+</div>
 </div>
 <div id="prediction" class="section level2">
 <h2>Prediction</h2>

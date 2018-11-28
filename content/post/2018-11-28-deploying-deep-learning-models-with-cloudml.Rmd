@@ -11,7 +11,7 @@ tags:
   - cloudml
 ---
 
-In this post we will go over deploying deep learning models to Google's [cloud machine learning engine](https://cloud.google.com/ml-engine/). We'll be using the `keras` and `cloudml` packages. 
+In this post we will go over deploying deep learning models to Google's [cloud machine learning engine](https://cloud.google.com/ml-engine/) in R with the `keras` and `cloudml` packages. 
 
 The `cloudml` package built by the good people of RSudio allows us to train deep learning models built with `keras` and `tensorflow` in the cloud. It also allows the deployment of trained models to the Google global prediction platform, which we can use to make predictions with a simple API call.
 
@@ -124,7 +124,7 @@ Once we've onfirmed that things work as expected locally, we can submit a CloudM
 tagger_job <- cloudml_train("tagger.R")
 ```
 
-All of the files within the current working directory will be bundled up and sent along with the script to CloudML.
+All of the files within the current working directory will be bundled up and sent along with the script to CloudML. The `cloudml` package discovers all the dependencies (`dplyr`, etc) and uses `packrat` to get the corresponding packages and install those on the CloudML service.
 
 Note that the very first time you submit a job to CloudML the various packages required to run your script will be compiled from source. This will make the execution time of the job considerably longer that you might expect. It’s only the first job that incurs this overhead though (since the package installations are cached), and subsequent jobs will run more quickly.
 
@@ -132,13 +132,19 @@ The status of the job can be viewed in the RStudio console:
 
 ![](/post/2018-11-28-deploying-deep-learning-models-with-cloudml_files/Screen Shot 2018-11-28 at 1.00.13 PM.png){width=100%}
 
+You can use the link in the R console to view the job in the Google Cloud Platform.
+
+![](http://hi.buffer.com/cbbb1c7d992b/Screen%252520Recording%2525202018-11-28%252520at%25252003.20%252520PM.gif){width=100%}
+
+You can also view the logs from this page. 
+
 ## Collecting Results
 When the job is complete, training results can be collected back to your local system (this is done automatically when monitoring the job using a background terminal in RStudio). A run report is displayed after the job is collected:
 
 ![](/post/2018-11-28-deploying-deep-learning-models-with-cloudml_files/Screen Shot 2018-11-28 at 2.11.13 PM.png){width=100%}
 
 ## Deploying the Model
-You can host your trained machine learning models in the cloud and use the Cloud ML prediction service to infer target values for new data. The Cloud ML prediction service makes use of models exported through the `export_savedmodel()` function.
+You can host your trained machine learning models in the cloud and use the Cloud ML prediction service to make predictions for new data. The Cloud ML prediction service makes use of models exported through the `export_savedmodel()` function.
 
 Once we have trained our model, we can export it with the following command:
 
@@ -151,6 +157,10 @@ Deployment is performed through `cloudml_deploy()` which uses the same gcloud an
 ```{r eval = FALSE}
 cloudml_deploy("helpscoutTagger", name = "helpscout_tagger")
 ```
+
+Once the models are registered, they are available in a central repository for your organization to consume and maintain. You can view the models in the "Models" section of the Google Cloud Platform. From here you can also monitor all the calls to the model, so that you can understand how the models are being used. 
+
+![](http://hi.buffer.com/7e8f0e3820d8/Screen%252520Recording%2525202018-11-28%252520at%25252003.24%252520PM.gif){width=100%}
 
 ## Prediction
 Once a model is deployed, predictions can be performed by providing a list of inputs into `cloudml_predict()`. Note that none of the code above has actually been executed. We'll try to make predictions in this session simply by providing a new input to the deployed model.

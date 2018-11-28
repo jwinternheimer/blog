@@ -91,7 +91,7 @@ code {
 }
 
 .content {
-  max-width: 800px;
+  max-width: 900px;
   margin: 40px auto 10px;
   padding: 0 15px;
   font-size: 14px;
@@ -268,7 +268,7 @@ code {
   }
 
   .content {
-    font-size: 16px;
+    font-size: 19px;
     line-height: 1.8;
   }
 

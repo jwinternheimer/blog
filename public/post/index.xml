@@ -17,7 +17,7 @@
       <pubDate>Wed, 28 Nov 2018 00:00:00 +0000</pubDate>
       
       <guid>/2018/11/28/deploying-deep-learning-models-with-cloudml/</guid>
-      <description>In this post we will go over deploying deep learning models to Google’s cloud machine learning engine. We’ll be using the keras and cloudml packages.
+      <description>In this post we will go over deploying deep learning models to Google’s cloud machine learning engine in R with the keras and cloudml packages.
 The cloudml package built by the good people of RSudio allows us to train deep learning models built with keras and tensorflow in the cloud. It also allows the deployment of trained models to the Google global prediction platform, which we can use to make predictions with a simple API call.</description>
     </item>
     
