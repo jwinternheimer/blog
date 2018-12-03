@@ -6,10 +6,20 @@
     <description>Recent content in R on A Data Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 28 Nov 2018 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Thu, 29 Nov 2018 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/categories/r/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Analyzing Census Data in R</title>
+      <link>/2018/11/29/analyzing-census-data-in-r/</link>
+      <pubDate>Thu, 29 Nov 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/2018/11/29/analyzing-census-data-in-r/</guid>
+      <description>Let’s play with American Cummunity Survey (ACS) data. ACS data differ from decennial Census data in that ACS data are based on an annual sample of approximately 3 million households, rather than a more complete enumeration of the US population. In turn, ACS data points are estimates characterized by a margin of error.
+Let’s see what data is available for Kentucky, the state I live in. We’ll analyze data at the county level.</description>
+    </item>
     
     <item>
       <title>Deploying Deep Learning Models with CloudML</title>

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Posts on A Data Blog</title>
-    <link>/post/</link>
-    <description>Recent content in Posts on A Data Blog</description>
+    <title>Census on A Data Blog</title>
+    <link>/tags/census/</link>
+    <description>Recent content in Census on A Data Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Thu, 29 Nov 2018 00:00:00 +0000</lastBuildDate>
     
-	<atom:link href="/post/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="/tags/census/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
@@ -19,16 +19,6 @@
       <guid>/2018/11/29/analyzing-census-data-in-r/</guid>
       <description>Let’s play with American Cummunity Survey (ACS) data. ACS data differ from decennial Census data in that ACS data are based on an annual sample of approximately 3 million households, rather than a more complete enumeration of the US population. In turn, ACS data points are estimates characterized by a margin of error.
 Let’s see what data is available for Kentucky, the state I live in. We’ll analyze data at the county level.</description>
-    </item>
-    
-    <item>
-      <title>Deploying Deep Learning Models with CloudML</title>
-      <link>/2018/11/28/deploying-deep-learning-models-with-cloudml/</link>
-      <pubDate>Wed, 28 Nov 2018 00:00:00 +0000</pubDate>
-      
-      <guid>/2018/11/28/deploying-deep-learning-models-with-cloudml/</guid>
-      <description>In this post we will go over deploying deep learning models to Google’s cloud machine learning engine in R with the keras and cloudml packages.
-The cloudml package built by the good people of RSudio allows us to train deep learning models built with keras and tensorflow in the cloud. It also allows the deployment of trained models to the Google global prediction platform, which we can use to make predictions with a simple API call.</description>
     </item>
     
   </channel>

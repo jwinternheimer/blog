@@ -1,0 +1,97 @@
+---
+title: Analyzing Census Data in R
+author: ''
+date: '2018-11-29'
+slug: analyzing-census-data-in-r
+categories:
+  - R
+tags:
+  - census
+---
+
+```{r warning = FALSE, message = FALSE, include = FALSE}
+# get setup
+library(tidycensus)
+library(dplyr)
+library(ggplot2)
+library(buffer)
+library(scales)
+
+# get api key
+census_api_key(Sys.getenv('census_api_key'))
+```
+
+Let's play with American Cummunity Survey (ACS) data. ACS data differ from decennial Census data in that ACS data are based on an annual sample of approximately 3 million households, rather than a more complete enumeration of the US population. In turn, ACS data points are estimates characterized by a margin of error.
+
+Let's see what data is available for Kentucky, the state I live in. We'll analyze data at the county level.
+
+```{r warning = FALSE, message = FALSE}
+# get kentucky data
+ky <- get_acs(geography = "county", 
+              variables = c(medincome = "B19013_001"), 
+              state = "KY")
+```
+
+Let's plot median income for each county.
+
+```{r echo = FALSE}
+ky %>%
+  mutate(NAME = gsub(" County, Kentucky", "", NAME),
+         NAME = reorder(NAME, estimate)) %>%
+  arrange(desc(estimate)) %>% 
+  head(20) %>% 
+  ggplot(aes(x = estimate, y = NAME)) +
+  geom_errorbarh(aes(xmin = estimate - moe, xmax = estimate + moe)) +
+  geom_point(color = "darkred", size = 3) +
+  buffer_theme() +
+  scale_x_continuous(labels = dollar) +
+  labs(title = "Household Income by County in Ken",
+       subtitle = "2012-2016 American Community Survey",
+       y = "",
+       x = "ACS estimate (bars represent margin of error)")
+```
+
+```{r}
+options(tigris_use_cache = TRUE)
+
+jefferson <- get_acs(state = "KY", county = "Jefferson", geography = "tract", 
+                  variables = "B19013_001", geometry = TRUE)
+```
+
+```{r}
+library(viridis)
+
+jefferson %>%
+  ggplot(aes(fill = estimate, color = estimate)) + 
+  geom_sf() + 
+  coord_sf(crs = 26911) + 
+  scale_fill_viridis(option = "magma") + 
+  scale_color_viridis(option = "magma")
+```
+
+```{r}
+racevars <- c(White = "P005003", 
+              Black = "P005004", 
+              Asian = "P005006", 
+              Hispanic = "P004003")
+
+jefferson <- get_decennial(geography = "tract", variables = racevars, 
+                  state = "KY", county = "Jefferson County", geometry = TRUE,
+                  summary_var = "P001001") 
+```
+
+```{r}
+jefferson %>%
+  mutate(percent = 100 * (value / summary_value)) %>%
+  ggplot(aes(fill = percent, color = percent)) +
+  facet_wrap(~variable) +
+  geom_sf() +
+  coord_sf(crs = 26915) + 
+  buffer_theme() +
+  labs(title = "Distribution of Population in Louisville, Kentucky",
+       subtitle = "2010 Decennial Census Data",
+       color = "Percent", fill = "Percent") +
+  scale_fill_viridis() +
+  scale_color_viridis()
+```
+

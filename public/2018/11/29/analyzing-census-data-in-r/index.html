@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Hugo 0.51" />
+
+
+<title>Analyzing Census Data in R - A Data Blog</title>
+<meta property="og:title" content="Analyzing Census Data in R - A Data Blog">
+
+
+
+  
+
+
+
+
+
+
+
+
+<link href='//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css' rel='stylesheet' type='text/css' />
+
+
+
+<link rel="stylesheet" href="/css/fonts.css" media="all">
+<link rel="stylesheet" href="/css/main.css" media="all">
+
+
+
+  </head>
+  <body>
+    <div class="wrapper">
+      <header class="header">
+        <nav class="nav">
+  <a href="/" class="nav-logo">
+    <img src="/images/dilbert.png"
+         width="50"
+         height="50"
+         alt="Logo">
+  </a>
+
+  <ul class="nav-links">
+    
+    <li><a href="https://github.com/jwinternheimer">GitHub</a></li>
+    
+    <li><a href="https://twitter.com/julheimer">Twitter</a></li>
+    
+  </ul>
+</nav>
+
+      </header>
+
+
+<main class="content" role="main">
+
+  <article class="article">
+    
+    <span class="article-duration">2 min read</span>
+    
+
+    <h1 class="article-title">Analyzing Census Data in R</h1>
+
+    
+    <span class="article-date">2018/11/29</span>
+    
+
+    <div class="article-content">
+      
+
+
+<p>Let’s play with American Cummunity Survey (ACS) data. ACS data differ from decennial Census data in that ACS data are based on an annual sample of approximately 3 million households, rather than a more complete enumeration of the US population. In turn, ACS data points are estimates characterized by a margin of error.</p>
+<p>Let’s see what data is available for Kentucky, the state I live in. We’ll analyze data at the county level.</p>
+<pre class="r"><code># get kentucky data
+ky &lt;- get_acs(geography = &quot;county&quot;, 
+              variables = c(medincome = &quot;B19013_001&quot;), 
+              state = &quot;KY&quot;)</code></pre>
+<p>Let’s plot median income for each county.</p>
+<p><img src="/post/2018-11-29-analyzing-census-data-in-r_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<pre class="r"><code>options(tigris_use_cache = TRUE)
+
+jefferson &lt;- get_acs(state = &quot;KY&quot;, county = &quot;Jefferson&quot;, geography = &quot;tract&quot;, 
+                  variables = &quot;B19013_001&quot;, geometry = TRUE)</code></pre>
+<pre><code>## Getting data from the 2012-2016 5-year ACS</code></pre>
+<pre class="r"><code>library(viridis)</code></pre>
+<pre><code>## Loading required package: viridisLite</code></pre>
+<pre><code>## 
+## Attaching package: &#39;viridis&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:scales&#39;:
+## 
+##     viridis_pal</code></pre>
+<pre class="r"><code>jefferson %&gt;%
+  ggplot(aes(fill = estimate, color = estimate)) + 
+  geom_sf() + 
+  coord_sf(crs = 26911) + 
+  scale_fill_viridis(option = &quot;magma&quot;) + 
+  scale_color_viridis(option = &quot;magma&quot;)</code></pre>
+<p><img src="/post/2018-11-29-analyzing-census-data-in-r_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<pre class="r"><code>racevars &lt;- c(White = &quot;P005003&quot;, 
+              Black = &quot;P005004&quot;, 
+              Asian = &quot;P005006&quot;, 
+              Hispanic = &quot;P004003&quot;)
+
+jefferson &lt;- get_decennial(geography = &quot;tract&quot;, variables = racevars, 
+                  state = &quot;KY&quot;, county = &quot;Jefferson County&quot;, geometry = TRUE,
+                  summary_var = &quot;P001001&quot;) </code></pre>
+<pre><code>## Getting data from the 2010 decennial Census</code></pre>
+<pre class="r"><code>jefferson %&gt;%
+  mutate(percent = 100 * (value / summary_value)) %&gt;%
+  ggplot(aes(fill = percent, color = percent)) +
+  facet_wrap(~variable) +
+  geom_sf() +
+  coord_sf(crs = 26915) + 
+  buffer_theme() +
+  labs(title = &quot;Distribution of Population in Louisville, Kentucky&quot;,
+       subtitle = &quot;2010 Decennial Census Data&quot;,
+       color = &quot;Percent&quot;, fill = &quot;Percent&quot;) +
+  scale_fill_viridis() +
+  scale_color_viridis()</code></pre>
+<p><img src="/post/2018-11-29-analyzing-census-data-in-r_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+
+    </div>
+  </article>
+
+  
+
+
+</main>
+
+      <footer class="footer">
+        <ul class="footer-links">
+          <li>
+            <a href="/index.xml" type="application/rss+xml" target="_blank">RSS feed</a>
+          </li>
+          <li>
+            <a href="https://gohugo.io/" class="footer-links-kudos">Made with <img src="/images/hugo-logo.png" alt="Img link to Hugo website" width="22" height="22"></a>
+          </li>
+        </ul>
+      </footer>
+
+    </div>
+    
+
+
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+
+
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/r.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/yaml.min.js"></script>
+<script>hljs.configure({languages: []}); hljs.initHighlightingOnLoad();</script>
+
+
+
+    
+
+    
+  </body>
+</html>
+
