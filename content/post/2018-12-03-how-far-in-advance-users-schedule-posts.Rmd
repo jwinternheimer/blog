@@ -1,0 +1,106 @@
+---
+title: How Far in Advance Users Schedule Posts
+author: ''
+date: '2018-12-03'
+slug: how-far-in-advance-users-schedule-posts
+categories: []
+tags: []
+---
+
+Buffer is a tool that allows people to schedule their social media posts in advance. In this analysis we will explore how far in advance users schedule their posts. 
+
+To do this we will compute some summary statistics for users that have scheduled posts in the past month. Then, we will summarise those summary statistics to try to understand the overall population of users.
+
+## Data Collection
+We'll gather one million updates that were created in the past month.
+
+```{r include = FALSE, message = FALSE, warning = FALSE}
+# load packages
+library(buffer)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(lubridate)
+```
+
+```{r include = FALSE, eval = FALSE}
+# connect to redshift
+con <- redshift_connect()
+```
+
+```{sql eval = FALSE}
+select 
+  up.id as update_id
+  , up.user_id as user_id
+  , u.billing_plan_name as plan
+  , up.created_at
+  , up.sent_at
+  , datediff(hour, up.created_at, up.sent_at) as hours_to_send
+  , up.profile_service
+from dbt.updates as up
+inner join dbt.users as u
+  on up.user_id = u.id
+where up.created_at > current_date - 180
+and up.was_sent_with_buffer
+and up.created_at < current_date - 60
+order by random()
+limit 1000000
+```
+
+```{r include = FALSE, eval = FALSE}
+# set as integer
+updates$hours_to_send <- as.integer(updates$hours_to_send)
+
+# remove nas
+updates <- updates %>% filter(!is.na(hours_to_send) & hours_to_send >= 0)
+
+# save data
+saveRDS(updates, file = 'time_to_send_updates.rds')
+```
+
+```{r include = FALSE}
+# load data
+updates <- readRDS('time_to_send_updates.rds')
+```
+
+We have around 900 thousand updates created in the past six months. Let's plot the distribution of the number of hours in advance people scheduled their posts.
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+# plot distribution of hours to send
+ggplot(updates, aes(x = hours_to_send)) +
+  geom_density(fill = "black", alpha = 0.4) +
+  scale_x_continuous(limits = c(0, 240)) +
+  buffer_theme() +
+  labs(x = "Number of Hours Between Created and Sent Dates", y = NULL,
+       title = "Number of Hours Scheduled in Advance",
+       subtitle = "All posts created in past six months")
+```
+
+As we can see, most posts are scheduled to go out in a very short period of time. There is a long tail of updates that were scheduled far in advance. Now let's calculate the 75th percentile for all users. This will tell us, for each user, the number of hours for which 75% of their posts were scheduled in advance.
+
+We'll only include users that scheduled at least 4 posts
+
+```{r}
+# calculate 75% quantile
+by_user <- updates %>% 
+  group_by(user_id) %>% 
+  summarise(updates = n_distinct(update_id),
+            percentile = quantile(hours_to_send, probs = 0.75)[[1]]) %>% 
+  filter(updates >= 4)
+```
+
+Now let's plot this metric for the 50 thousand users in our dataset.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+# plot distribution of percentiles
+ggplot(by_user, aes(x = percentile)) +
+  geom_density(fill = "black", alpha = 0.4) +
+  scale_x_continuous(limits = c(0, 240), breaks = seq(0, 240, 24)) +
+  scale_y_continuous(labels = percent) +
+  buffer_theme() +
+  labs(x = "Number of Hours Between Created and Sent Dates", y = NULL,
+       title = "Number of Hours Scheduled in Advance",
+       subtitle = "Number of Hours For Which 75% of Posts Are Scheduled In Advance")
+```
+
+Most users schedule most of their updates for the same day.

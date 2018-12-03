@@ -1,0 +1,46 @@
+---
+title: How Far in Advance Users Schedule Posts
+author: ''
+date: '2018-12-03'
+slug: how-far-in-advance-users-schedule-posts
+categories: []
+tags: []
+---
+
+
+
+<p>Buffer is a tool that allows people to schedule their social media posts in advance. In this analysis we will explore how far in advance users schedule their posts.</p>
+<p>To do this we will compute some summary statistics for users that have scheduled posts in the past month. Then, we will summarise those summary statistics to try to understand the overall population of users.</p>
+<div id="data-collection" class="section level2">
+<h2>Data Collection</h2>
+<p>We’ll gather one million updates that were created in the past month.</p>
+<pre class="sql"><code>select 
+  up.id as update_id
+  , up.user_id as user_id
+  , u.billing_plan_name as plan
+  , up.created_at
+  , up.sent_at
+  , datediff(hour, up.created_at, up.sent_at) as hours_to_send
+  , up.profile_service
+from dbt.updates as up
+inner join dbt.users as u
+  on up.user_id = u.id
+where up.created_at &gt; current_date - 180
+and up.was_sent_with_buffer
+and up.created_at &lt; current_date - 60
+order by random()
+limit 1000000</code></pre>
+<p>We have around 900 thousand updates created in the past six months. Let’s plot the distribution of the number of hours in advance people scheduled their posts.</p>
+<p><img src="/post/2018-12-03-how-far-in-advance-users-schedule-posts_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<p>As we can see, most posts are scheduled to go out in a very short period of time. There is a long tail of updates that were scheduled far in advance. Now let’s calculate the 75th percentile for all users. This will tell us, for each user, the number of hours for which 75% of their posts were scheduled in advance.</p>
+<p>We’ll only include users that scheduled at least 4 posts</p>
+<pre class="r"><code># calculate 75% quantile
+by_user &lt;- updates %&gt;% 
+  group_by(user_id) %&gt;% 
+  summarise(updates = n_distinct(update_id),
+            percentile = quantile(hours_to_send, probs = 0.75)[[1]]) %&gt;% 
+  filter(updates &gt;= 4)</code></pre>
+<p>Now let’s plot this metric for the 50 thousand users in our dataset.</p>
+<p><img src="/post/2018-12-03-how-far-in-advance-users-schedule-posts_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<p>Most users schedule most of their updates for the same day.</p>
+</div>
