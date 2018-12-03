@@ -1,0 +1,243 @@
+---
+title: Upgrades and Retention in New Publish
+author: ''
+date: '2018-12-03'
+slug: upgrades-and-retention-in-new-publish
+categories: []
+tags: []
+---
+
+Over the past few months Buffer has been rolling out a newly designed dashboard, which we refer to as "New Publish". The old dashboard, labeled "Buffer Classic", is still being served to the majority of people who create a Buffer account. 
+
+The purpose of this analysis is to explore the rates at which people upgrade to paid plans in New Publish and Buffer Classic, and how long they took to do it. 
+
+## Summary
+The rate at which new users upgrade to Pro plans is significantly higher for users of Buffer Classic. The difference between the Pro upgrade rates of Buffer Classic and New Publish users grows as the number of days since signing up increases.
+
+This data suggests that improving onboarding and retention rates of New Publish users, especially in the first week, could help reduct the difference between the upgrade rates. We should monitor the retention rates of New Publish users more closely and reduce the gap between New Publish and Buffer Classic
+
+## Data Collection
+We'll collect the data from Redshift with the query below:
+
+```{r include = FALSE, warning = FALSE, message = FALSE}
+# load packages
+library(dplyr)
+library(buffer)
+library(ggplot2)
+library(scales)
+library(lubridate)
+
+# buffer ggplot theme
+buffer_theme <- function() {
+  theme_minimal(base_family = "Roboto Condensed") +
+    theme(plot.title = element_text(size = rel(1.5), face = "bold"),
+          plot.subtitle = element_text(size = rel(1.1)),
+          plot.caption = element_text(color = "#777777", vjust = 0),
+          axis.title = element_text(size = rel(.9), hjust = 0.95, face = "italic"),
+          panel.grid.major = element_line(size = rel(.1), color = "#000000"),
+          panel.grid.minor = element_line(size = rel(.05), color = "#000000"),
+          plot.background = element_rect(fill = '#F5F5F5', color = '#F5F5F5'),
+          panel.background = element_rect(fill = '#F5F5F5', color = '#F5F5F5'))
+}
+```
+
+```{r include = FALSE, eval = FALSE}
+# establish redshift connection
+con <- redshift_connect()
+```
+
+```{sql eval = FALSE}
+select 
+  u.id as user_id
+  , date(u.created_at) as signup_date
+  , ue.name as experiment
+  , ue."group" as ex_group
+  , date(uf.first_charge_at) as upgrade_date
+  , uf.first_charge_simplified_plan_id as first_charge_plan
+  , uf.did_user_upgrade_to_awesome
+  , uf.number_of_days_to_upgrade
+from dbt.users as u
+inner join dbt.user_experiments as ue
+  on u.id = ue.user_id
+  and ue.name like 'new_publish_new_buffer_free_users_phase%'
+left join dbt.user_upgrade_facts as uf
+  on u.id = uf.user_id
+```
+
+```{r include = FALSE}
+# save and load data
+# saveRDS(users, file = "np_upgrades.rds")
+users <- readRDS("np_upgrades.rds")
+```
+
+Great. There are around 209 thousand users in this dataset. We're ready to to some exploratory analysis.
+
+## Upgrade Rates
+Let's calculate the proportion of users that upgraded to a paid plan at some point. 
+
+```{r include = FALSE}
+# rename experiment groups
+users <- users %>% 
+  mutate(ex_group = gsub("control", "Buffer Classic", ex_group),
+         ex_group = gsub("enabled", "New Publish", ex_group),
+         signup_week = floor_date(signup_date, unit = "weeks"),
+         upgraded = !is.na(upgrade_date))
+```
+
+```{r echo = FALSE}
+# plot overall upgrade rates
+users %>% 
+  group_by(ex_group, upgraded) %>% 
+  summarise(users = n_distinct(user_id)) %>% 
+  mutate(percent = users / sum(users)) %>% 
+  filter(upgraded) %>% 
+  ungroup() %>% 
+  mutate(ex_group = reorder(ex_group, percent)) %>% 
+  ggplot(aes(x = ex_group, y = percent)) +
+  geom_bar(stat = 'identity') +
+  buffer_theme() +
+  scale_y_continuous(labels = percent) +
+  coord_flip() +
+  labs(x = NULL, y = "Upgrade Rate", title = "Overall Upgrade Rates",
+       subtitle = "Includes upgrades to Business plans")
+```
+
+This chart tells us that the proportion of users that upgrade is substantially higher in Buffer Classic than it is in New Publish. 
+
+There are a couple of factors that we need to control for. For a while, there was a bug in New Publish that prevented users from upgrading. We fixed it around the end of September.
+
+```{r echo = FALSE}
+# plot overall upgrade rates
+users %>% 
+  filter(signup_week >= "2018-09-02" & signup_week != max(signup_week)) %>% 
+  group_by(signup_week, ex_group, upgraded) %>% 
+  summarise(users = n_distinct(user_id)) %>% 
+  mutate(percent = users / sum(users)) %>% 
+  filter(upgraded) %>% 
+  ggplot(aes(x = signup_week, y = percent, color = ex_group)) +
+  geom_point() +
+  geom_line() +
+  buffer_theme() +
+  scale_y_continuous(labels = percent) +
+  labs(x = NULL, y = "Upgrade Rate", title = "Overall Upgrade Rates",
+       subtitle = "Includes upgrades to Business plans", color = "Group")
+```
+
+Let's only include data from October on. Also, New Publish users can't upgrade to Business plans. :-| We'll therefore exclude all Buffer Classic users that upgraded to Business plans in this comparison.
+
+```{r echo = FALSE}
+# plot overall upgrade rates
+users %>% 
+  filter(signup_week > "2018-09-30") %>% 
+  group_by(ex_group, did_user_upgrade_to_awesome) %>% 
+  summarise(users = n_distinct(user_id)) %>% 
+  mutate(percent = users / sum(users)) %>% 
+  filter(did_user_upgrade_to_awesome) %>% 
+  ungroup() %>% 
+  mutate(ex_group = reorder(ex_group, percent)) %>% 
+  ggplot(aes(x = ex_group, y = percent)) +
+  geom_bar(stat = 'identity') +
+  buffer_theme() +
+  scale_y_continuous(labels = percent) +
+  coord_flip() +
+  labs(x = NULL, y = "Upgrade Rate", title = "Pro Upgrade Rates",
+       subtitle = "Excludes Business upgrades and users that signed up before October 6")
+```
+
+Even with these constraints, the upgrade rate is around 33% higher for users in Buffer Classic! 
+
+## Retention
+I have a sneaking suspicion that the lower retention rates for users of New Publish play a significant role in the big delta between upgrade rates. Let's calculate the Pro upgrade rates for each group, but only allow users 1 week to upgrade to a Pro plan.
+
+```{r echo = FALSE}
+# plot overall upgrade rates
+users %>% 
+  mutate(upgraded_one_week = did_user_upgrade_to_awesome & number_of_days_to_upgrade <= 6) %>% 
+  filter(signup_week > "2018-09-30" & signup_week < "2018-11-25") %>% 
+  group_by(signup_week, ex_group, upgraded_one_week) %>% 
+  summarise(users = n_distinct(user_id)) %>% 
+  mutate(percent = users / sum(users)) %>% 
+  filter(upgraded_one_week) %>% 
+  ggplot(aes(x = signup_week, y = percent, color = ex_group)) +
+  geom_point() +
+  geom_line() +
+  buffer_theme() +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Signup Week", y = "Upgrade Rate", title = "Pro Upgrade Rates",
+       subtitle = "Users have 7 days to upgrade to a Pro plan",
+       color = "Group")
+```
+
+Upgrade rates are still consistently higher for Buffer Classic Users. Let's try to see if that changes if we dynamically change the number of days that users have to upgrade.
+
+```{r echo = FALSE , warning = FALSE, message = FALSE}
+library(gganimate)
+
+# calculate number of users in each group
+n_classic <- 91875
+n_new <- 17749
+
+# group by day
+by_day <- users %>% 
+  filter(signup_week > "2018-09-30" & signup_date < "2018-11-25") %>% 
+  group_by(number_of_days_to_upgrade, ex_group, did_user_upgrade_to_awesome) %>%
+  summarise(users = n_distinct(user_id)) %>% 
+  filter(did_user_upgrade_to_awesome) %>% 
+  filter(number_of_days_to_upgrade >= 0 & number_of_days_to_upgrade <= 21)
+
+# get cumulative sums
+cumul_users <- by_day %>% 
+  group_by(ex_group) %>% 
+  arrange(number_of_days_to_upgrade) %>% 
+  mutate(cs = cumsum(users)) %>% 
+  mutate(rate = ifelse(ex_group == "Buffer Classic", cs / n_classic, cs / n_new)) %>% 
+  filter(number_of_days_to_upgrade >= 0 & number_of_days_to_upgrade <= 21) %>% 
+  select(-did_user_upgrade_to_awesome)
+
+# set plot dimensions
+# options(gganimate.dev_args = list(width = 500, height = 250))
+
+# build plot
+ggplot(cumul_users, aes(x = ex_group, y = rate)) +
+  geom_bar(stat = 'identity') +
+  coord_flip() +
+  buffer_theme() +
+  scale_y_continuous(labels = percent) +
+  # gganimate specific bits
+  labs(title = "Pro Upgrade Rate", x = NULL, y = "Pro Upgrade Rate",
+       subtitle = 'Days Since Signing Up: {frame_time}') +
+  transition_time(number_of_days_to_upgrade) +
+  ease_aes('linear')
+```
+
+We can see that the upgrade rates start to diverge more quickly around 3 to 4 days after signing up. We can alsp plot the differences in the upgrade rates for each day after signing up.
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+library(tidyr)
+
+# spread data
+spread <- cumul_users %>% 
+  select(-users, -cs) %>%  
+  spread(ex_group, rate) 
+
+# rename columns
+colnames(spread) <- c("days_to_upgrade", "classic", "new_publish")
+
+# calculate difference
+spread <- spread %>% 
+  mutate(diff = classic - new_publish)
+
+# plot difference over time
+ggplot(spread, aes(x = days_to_upgrade, y = diff)) +
+  geom_point(size = 2) +
+  geom_line() +
+  buffer_theme() +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Number of Days Since Signing Up", y = NULL,
+       title = "Difference Between Classic and New Publish Upgrade Rates",
+       subtitle = "The difference in upgrade rates increases over time")
+```
+
+As we can see, the difference between the upgrade rates of Buffer Classic and New Publish grows most rapidly during the first week after signing up for Buffer. After the one week mark, the difference in upgrade rates remains relatively constant. 
+
+This data suggests that improving onboarding and retention rates of New Publish users, especially in the first week, could help reduct the difference between the upgrade rates.

@@ -6,10 +6,20 @@
     <description>Recent content on A Data Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 29 Nov 2018 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Mon, 03 Dec 2018 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Upgrades and Retention in New Publish</title>
+      <link>/2018/12/03/upgrades-and-retention-in-new-publish/</link>
+      <pubDate>Mon, 03 Dec 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/2018/12/03/upgrades-and-retention-in-new-publish/</guid>
+      <description>Over the past few months Buffer has been rolling out a newly designed dashboard, which we refer to as “New Publish”. The old dashboard, labeled “Buffer Classic”, is still being served to the majority of people who create a Buffer account.
+The purpose of this analysis is to explore the rates at which people upgrade to paid plans in New Publish and Buffer Classic, and how long they took to do it.</description>
+    </item>
     
     <item>
       <title>Analyzing Census Data in R</title>
