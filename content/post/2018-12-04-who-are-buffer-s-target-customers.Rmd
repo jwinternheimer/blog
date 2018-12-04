@@ -1,0 +1,220 @@
+---
+title: Who are Buffer’s Target Customers?
+author: ''
+date: '2018-12-04'
+slug: who-are-buffer-s-target-customers
+categories: []
+tags: []
+---
+
+In the beginning of October 2018 we ran a [survey](https://paper.dropbox.com/doc/Target-Customer-Breakdown-Survey-Design-Usage-Analysis--APEa4MfJXOTgIiRGv5bKCgcTAg-IRQFYIt6uF2BDuVKIj4bv) to get a better understanding of how our target customers use Buffer. In this analysis, we'll examine these users' usage patterns on different levels. 
+
+We'll import the raw responses from [this spreadsheet](https://docs.google.com/spreadsheets/d/1zWndjJspBQCSCC6NDZAmB9gTy_G35TJwAFy-dXDJKMo/edit#gid=1451785594).
+
+## Summary
+**Agencies** are the most likely to be paying for Buffer and have a relatively low churn rate. 
+
+**Digital brands** are not as likely to be paying customers as agencies or offline brands, but are slightly more likely than Publishers to be paying customers. Digital brands have the highest churn rates of all of the customer segments. 
+
+**Publishers** are the least likely to be paying customers and have a relatively low churn rate.
+
+**Offline brands** are less likely to be paying customers than agencies but are more likely to be paying than digital brands or publishers. Offline brands have the lowest churn rates of all of the customer segments.
+
+```{r include = FALSE, warning = FALSE, message = FALSE}
+# load libraries
+library(buffer)
+library(dplyr)
+library(tidyr)
+library(dbplyr)
+library(ggplot2)
+library(scales)
+```
+
+```{r eval = FALSE}
+# read data from csv
+users <- read.csv('~/Downloads/target_customers.csv', header = TRUE, stringsAsFactors = FALSE)
+```
+
+```{r eval = FALSE, include = FALSE}
+# rename columns
+colnames(users) <- c('user_id', 'plan', 'company_type', 'has_social_manager', 
+                     'client_brand_type', 'other_brand_type', 'company_description')
+
+# join awesome and new_awesome
+users <- users %>% 
+  mutate(plan = gsub("pro", "awesome", plan),
+         plan = gsub("awesome", "awesome/pro", plan),
+         plan = gsub("new_awesome/pro", "awesome/pro", plan),
+         plan = gsub("new_awesome", "awesome/pro", plan),
+         plan = gsub("enterprise600", "enterprise", plan),
+         plan = gsub("enterprise200", "enterprise", plan))
+```
+
+```{r include = FALSE}
+# save data
+# saveRDS(users, file = 'target_customers.rds')
+
+# load data
+users <- readRDS('target_customers.rds')
+```
+
+## Exploratory analysis
+Let's begin by taking a look at the types of plans that these users were on when they filled out the survey.
+
+```{r echo = FALSE}
+# plot plan counts
+users %>% 
+  count(plan) %>% 
+  mutate(plan = reorder(plan, n)) %>% 
+  ggplot(aes(x = plan, y = n)) +
+  geom_bar(stat = 'identity') +
+  coord_flip() +
+  buffer_theme() +
+  labs(y = "Users", x = NULL, title = "Responses by Plan Type")
+```
+
+We can see that most of the responses came from free users. 
+
+```{r echo = FALSE}
+# plot plan counts
+users %>% 
+  filter(company_type != "") %>% 
+  count(company_type) %>% 
+  mutate(company_type = reorder(company_type, n)) %>% 
+  ggplot(aes(x = company_type, y = n)) +
+  geom_bar(stat = 'identity') +
+  coord_flip() +
+  buffer_theme() +
+  labs(y = "Users", x = NULL, title = "Responses by Company Type")
+```
+
+We had a good number of responses from each company type. Now let's try to see if each type of company is more or less likely to be on a paid plan.
+
+```{r}
+# determine if on paid plan
+users <- users %>% 
+  mutate(on_paid_plan = ifelse(plan == "free", "no", "yes"))
+```
+
+```{r echo = FALSE}
+ratios <- users %>%
+  count(company_type, on_paid_plan) %>%
+  group_by(company_type) %>%
+  filter(sum(n) >= 10) %>%
+  ungroup() %>%
+  spread(on_paid_plan, n, fill = 0) %>%
+  mutate_if(is.numeric, funs((. + 1) / (sum(.) + 1))) %>%
+  mutate(logratio = log(yes / no)) %>%
+  arrange(desc(logratio))
+
+# plot ratios
+ratios %>%
+  mutate(company_type = reorder(company_type, logratio)) %>%
+  ggplot(aes(company_type, logratio, fill = logratio < 0)) +
+  geom_bar(stat = 'identity') +
+  coord_flip() +
+  labs(x = NULL, y = "Log Odds Ratio", title = "Relative Likelihood of Being on Paid Plan",
+       subtitle = "Agencies are most likely to be on a paid Publish plan") +
+  ylab("Log Odds Ratio") +
+  buffer_theme() +
+  scale_fill_discrete(name = "", labels = c("More Likely Paying", "More Likely Free"))
+```
+
+Based on this graph, we can see that Agencies are most likely to be on paid plans, whereas Publishers and those that answered with "Other" are the least likely. Now let's make the same chart but look at the likelihood of users being on _business_ plans.
+
+```{r echo = FALSE}
+ratios <- users %>%
+  mutate(on_business_plan = ifelse(plan != "free" & plan != "awesome/pro", "yes", "no")) %>% 
+  count(company_type, on_business_plan) %>%
+  group_by(company_type) %>%
+  filter(sum(n) >= 10) %>%
+  ungroup() %>%
+  spread(on_business_plan, n, fill = 0) %>%
+  mutate_if(is.numeric, funs((. + 1) / (sum(.) + 1))) %>%
+  mutate(logratio = log(yes / no)) %>%
+  arrange(desc(logratio))
+
+# plot ratios
+ratios %>%
+  mutate(company_type = reorder(company_type, logratio)) %>%
+  ggplot(aes(company_type, logratio, fill = logratio < 0)) +
+  geom_bar(stat = 'identity') +
+  coord_flip() +
+  labs(x = NULL, y = "Log Odds Ratio", title = "Relative Likelihood of Being on Business Plan",
+       subtitle = "Agencies are most likely to be on a business plan") +
+  ylab("Log Odds Ratio") +
+  scale_fill_discrete(name = "", labels = c("More Likely B4B", "More Likely not B4B")) +
+  buffer_theme()
+```
+
+Agencies are the most likely to be on Business plans, and digital brands and publishers are less likely.
+
+## Churn Rates
+We'll gather the _current_ plans for each of these users to see how many of them have churned since October. We'll join the users' current plans into the original dataframe that includes the plan at the time the survey was filled out.
+
+```{r eval = FALSE, include = FALSE}
+# connect to redshift
+con <- redshift_connect()
+
+# get user ids from users dataframe
+user_ids <- build_sql(users$user_id)
+
+# sql query
+plan_query <- "
+
+  select
+    u.id as user_id
+    , u.billing_plan_name as current_plan
+  from dbt.users as u
+  where u.id in user_id_list
+  group by 1,2
+
+"
+
+# final query
+final_query <- gsub("user_id_list", user_ids, sprintf(plan_query))
+  
+# query redshift
+user_plans <- query_db(final_query, con)
+```
+
+```{r include = FALSE}
+# save data
+# saveRDS(user_plans, file = 'target_customer_current_plans.rds')
+
+# load data
+user_plans <- readRDS('target_customer_current_plans.rds')
+```
+
+```{r}
+# join current plans in to users dataframe
+users <- users %>% 
+  inner_join(user_plans, by = "user_id")
+
+# determine if user churned
+users <- users %>% 
+  mutate(churned = plan != "free" & current_plan == "individual")
+```
+
+Now we can plot the churn rates of each segment.
+
+```{r echo = FALSE}
+users %>% 
+  filter(plan != "free") %>% 
+  group_by(company_type, churned) %>% 
+  summarise(users = n_distinct(user_id)) %>% 
+  filter(!is.na(churned) & company_type != "") %>% 
+  mutate(churn_rate = users / sum(users)) %>% 
+  filter(churned) %>% 
+  ungroup() %>% 
+  mutate(company_type = reorder(company_type, churn_rate)) %>% 
+  ggplot(aes(x = company_type, y = churn_rate)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  buffer_theme() + 
+  scale_y_continuous(labels = percent) +
+  labs(x = NULL, y = NULL, title = "Churn Rates by Customer Segment",
+       subtitle = "Digital brands churn at the highest rate")
+```
+
+It seems that digital brands churned at the highest rate, followed by agencies, publishers, and offline brands, which churned at the lowest rate.

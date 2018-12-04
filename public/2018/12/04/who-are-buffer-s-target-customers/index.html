@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Hugo 0.51" />
+
+
+<title>Who are Buffer’s Target Customers? - A Data Blog</title>
+<meta property="og:title" content="Who are Buffer’s Target Customers? - A Data Blog">
+
+
+
+  
+
+
+
+
+
+
+
+
+<link href='//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css' rel='stylesheet' type='text/css' />
+
+
+
+<link rel="stylesheet" href="/css/fonts.css" media="all">
+<link rel="stylesheet" href="/css/main.css" media="all">
+
+
+
+  </head>
+  <body>
+    <div class="wrapper">
+      <header class="header">
+        <nav class="nav">
+  <a href="/" class="nav-logo">
+    <img src="/images/dilbert.png"
+         width="50"
+         height="50"
+         alt="Logo">
+  </a>
+
+  <ul class="nav-links">
+    
+    <li><a href="https://github.com/jwinternheimer">GitHub</a></li>
+    
+    <li><a href="https://twitter.com/julheimer">Twitter</a></li>
+    
+  </ul>
+</nav>
+
+      </header>
+
+
+<main class="content" role="main">
+
+  <article class="article">
+    
+    <span class="article-duration">2 min read</span>
+    
+
+    <h1 class="article-title">Who are Buffer’s Target Customers?</h1>
+
+    
+    <span class="article-date">2018/12/04</span>
+    
+
+    <div class="article-content">
+      
+
+
+<p>In the beginning of October 2018 we ran a <a href="https://paper.dropbox.com/doc/Target-Customer-Breakdown-Survey-Design-Usage-Analysis--APEa4MfJXOTgIiRGv5bKCgcTAg-IRQFYIt6uF2BDuVKIj4bv">survey</a> to get a better understanding of how our target customers use Buffer. In this analysis, we’ll examine these users’ usage patterns on different levels.</p>
+<p>We’ll import the raw responses from <a href="https://docs.google.com/spreadsheets/d/1zWndjJspBQCSCC6NDZAmB9gTy_G35TJwAFy-dXDJKMo/edit#gid=1451785594">this spreadsheet</a>.</p>
+<div id="summary" class="section level2">
+<h2>Summary</h2>
+<p><strong>Agencies</strong> are the most likely to be paying for Buffer and have a relatively low churn rate.</p>
+<p><strong>Digital brands</strong> are not as likely to be paying customers as agencies or offline brands, but are slightly more likely than Publishers to be paying customers. Digital brands have the highest churn rates of all of the customer segments.</p>
+<p><strong>Publishers</strong> are the least likely to be paying customers and have a relatively low churn rate.</p>
+<p><strong>Offline brands</strong> are less likely to be paying customers than agencies but are more likely to be paying than digital brands or publishers. Offline brands have the lowest churn rates of all of the customer segments.</p>
+<pre class="r"><code># read data from csv
+users &lt;- read.csv(&#39;~/Downloads/target_customers.csv&#39;, header = TRUE, stringsAsFactors = FALSE)</code></pre>
+</div>
+<div id="exploratory-analysis" class="section level2">
+<h2>Exploratory analysis</h2>
+<p>Let’s begin by taking a look at the types of plans that these users were on when they filled out the survey.</p>
+<p><img src="/post/2018-12-04-who-are-buffer-s-target-customers_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>We can see that most of the responses came from free users.</p>
+<p><img src="/post/2018-12-04-who-are-buffer-s-target-customers_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<p>We had a good number of responses from each company type. Now let’s try to see if each type of company is more or less likely to be on a paid plan.</p>
+<pre class="r"><code># determine if on paid plan
+users &lt;- users %&gt;% 
+  mutate(on_paid_plan = ifelse(plan == &quot;free&quot;, &quot;no&quot;, &quot;yes&quot;))</code></pre>
+<p><img src="/post/2018-12-04-who-are-buffer-s-target-customers_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<p>Based on this graph, we can see that Agencies are most likely to be on paid plans, whereas Publishers and those that answered with “Other” are the least likely. Now let’s make the same chart but look at the likelihood of users being on <em>business</em> plans.</p>
+<p><img src="/post/2018-12-04-who-are-buffer-s-target-customers_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p>Agencies are the most likely to be on Business plans, and digital brands and publishers are less likely.</p>
+</div>
+<div id="churn-rates" class="section level2">
+<h2>Churn Rates</h2>
+<p>We’ll gather the <em>current</em> plans for each of these users to see how many of them have churned since October. We’ll join the users’ current plans into the original dataframe that includes the plan at the time the survey was filled out.</p>
+<pre class="r"><code># join current plans in to users dataframe
+users &lt;- users %&gt;% 
+  inner_join(user_plans, by = &quot;user_id&quot;)
+
+# determine if user churned
+users &lt;- users %&gt;% 
+  mutate(churned = plan != &quot;free&quot; &amp; current_plan == &quot;individual&quot;)</code></pre>
+<p>Now we can plot the churn rates of each segment.</p>
+<p><img src="/post/2018-12-04-who-are-buffer-s-target-customers_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+<p>It seems that digital brands churned at the highest rate, followed by agencies, publishers, and offline brands, which churned at the lowest rate.</p>
+</div>
+
+    </div>
+  </article>
+
+  
+
+
+</main>
+
+      <footer class="footer">
+        <ul class="footer-links">
+          <li>
+            <a href="/index.xml" type="application/rss+xml" target="_blank">RSS feed</a>
+          </li>
+          <li>
+            <a href="https://gohugo.io/" class="footer-links-kudos">Made with <img src="/images/hugo-logo.png" alt="Img link to Hugo website" width="22" height="22"></a>
+          </li>
+        </ul>
+      </footer>
+
+    </div>
+    
+
+
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+
+
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/r.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/yaml.min.js"></script>
+<script>hljs.configure({languages: []}); hljs.initHighlightingOnLoad();</script>
+
+
+
+    
+
+    
+  </body>
+</html>
+

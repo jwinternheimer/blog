@@ -6,10 +6,22 @@
     <description>Recent content in Posts on A Data Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 03 Dec 2018 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Tue, 04 Dec 2018 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/post/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Who are Buffer’s Target Customers?</title>
+      <link>/2018/12/04/who-are-buffer-s-target-customers/</link>
+      <pubDate>Tue, 04 Dec 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/2018/12/04/who-are-buffer-s-target-customers/</guid>
+      <description>In the beginning of October 2018 we ran a survey to get a better understanding of how our target customers use Buffer. In this analysis, we’ll examine these users’ usage patterns on different levels.
+We’ll import the raw responses from this spreadsheet.
+Summary Agencies are the most likely to be paying for Buffer and have a relatively low churn rate.
+Digital brands are not as likely to be paying customers as agencies or offline brands, but are slightly more likely than Publishers to be paying customers.</description>
+    </item>
     
     <item>
       <title>How Far in Advance Users Schedule Posts</title>
