@@ -17,9 +17,8 @@
       <pubDate>Mon, 03 Dec 2018 00:00:00 +0000</pubDate>
       
       <guid>/2018/12/03/how-far-in-advance-users-schedule-posts/</guid>
-      <description>Buffer is a tool that allows people to schedule their social media posts in advance. In this analysis we will explore how far in advance users schedule their posts.
-To do this we will compute some summary statistics for users that have scheduled posts in the past month. Then, we will summarise those summary statistics to try to understand the overall population of users.
-Data Collection We’ll gather one million updates that were created in the past month.</description>
+      <description>Buffer is a tool that allows people to schedule their social media posts in advance. In this analysis we will explore how far in advance users schedule their posts. If users don’t schedule many posts very far out in advance, it may have some implications for how we develop the product in the future.
+To do this we will compute some summary statistics for a sample of users that have scheduled posts in the past six months.</description>
     </item>
     
     <item>

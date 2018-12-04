@@ -80,7 +80,7 @@
 <div id="data-collection" class="section level2">
 <h2>Data Collection</h2>
 <p>We’ll collect the data from Redshift with the query below:</p>
-<pre class="sql"><code>select
+<pre class="sql"><code>select 
   u.id as user_id
   , date(u.created_at) as signup_date
   , ue.name as experiment
@@ -113,8 +113,8 @@ left join dbt.user_upgrade_facts as uf
 <p>I have a sneaking suspicion that the lower retention rates for users of New Publish play a significant role in the big delta between upgrade rates. Let’s calculate the Pro upgrade rates for each group, but only allow users 1 week to upgrade to a Pro plan.</p>
 <p><img src="/post/2018-12-03-upgrades-and-retention-in-new-publish_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
 <p>Upgrade rates are still consistently higher for Buffer Classic Users. Let’s try to see if that changes if we dynamically change the number of days that users have to upgrade.</p>
-<p><img src="https://media.giphy.com/media/1xooCBb76reSdwubPw/giphy.gif" /><!-- --></p>
-<p>We can see that the upgrade rates start to diverge more quickly around 3 to 4 days after signing up. We can alsp plot the differences in the upgrade rates for each day after signing up.</p>
+<p><img src="/post/2018-12-03-upgrades-and-retention-in-new-publish_files/figure-html/unnamed-chunk-10-1.gif" /><!-- --></p>
+<p>We can see that the upgrade rates start to diverge more quickly around 3 to 4 days after signing up. We can also plot the differences in the upgrade rates for each day after signing up.</p>
 <p><img src="/post/2018-12-03-upgrades-and-retention-in-new-publish_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
 <p>As we can see, the difference between the upgrade rates of Buffer Classic and New Publish grows most rapidly during the first week after signing up for Buffer. After the one week mark, the difference in upgrade rates remains relatively constant.</p>
 <p>This data suggests that improving onboarding and retention rates of New Publish users, especially in the first week, could help reduct the difference between the upgrade rates.</p>

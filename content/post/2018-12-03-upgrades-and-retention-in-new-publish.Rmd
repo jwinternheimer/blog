@@ -210,7 +210,7 @@ ggplot(cumul_users, aes(x = ex_group, y = rate)) +
   ease_aes('linear')
 ```
 
-We can see that the upgrade rates start to diverge more quickly around 3 to 4 days after signing up. We can alsp plot the differences in the upgrade rates for each day after signing up.
+We can see that the upgrade rates start to diverge more quickly around 3 to 4 days after signing up. We can also plot the differences in the upgrade rates for each day after signing up.
 
 ```{r echo = FALSE, warning = FALSE, message = FALSE}
 library(tidyr)

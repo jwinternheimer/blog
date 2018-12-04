@@ -7,9 +7,16 @@ categories: []
 tags: []
 ---
 
-Buffer is a tool that allows people to schedule their social media posts in advance. In this analysis we will explore how far in advance users schedule their posts. 
+Buffer is a tool that allows people to schedule their social media posts in advance. In this analysis we will explore how far in advance users schedule their posts. If users don't schedule many posts very far out in advance, it may have some implications for how we develop the product in the future.
 
-To do this we will compute some summary statistics for users that have scheduled posts in the past month. Then, we will summarise those summary statistics to try to understand the overall population of users.
+To do this we will compute some summary statistics for a sample of users that have scheduled posts in the past six months. Then, we will summarise those summary statistics to try to understand the overall population of users.
+
+## Summary
+Almost all users scheduled most (at least 75%) of their updates to be sent within 10 days. Around 53% of users schedule most of their posts to be sent within 24 hours. This means that around 47% of users scheduled most of their posts to be sent more than 24 hours later. 
+
+Around 67% of users scheduled most of their posts to be sent within 48 hours, which implies that a third of users scheduled most of their posts to be sent more than 48 hours later.
+
+Around 94% of users scheduled most of their posts to be sent within the week, which implies that around 6% of users scheduled most of their posts to be sent more than one week later.
 
 ## Data Collection
 We'll gather one million updates that were created in the past month.
@@ -63,7 +70,10 @@ saveRDS(updates, file = 'time_to_send_updates.rds')
 updates <- readRDS('time_to_send_updates.rds')
 ```
 
-We have around 900 thousand updates created in the past six months. Let's plot the distribution of the number of hours in advance people scheduled their posts.
+We have around 918 thousand updates created in the past six months. 
+
+## Exploratory Plots
+Let's begin by plotting the distribution of the number of hours in advance people scheduled their posts. The actual metric that we are plotting the distribution of is the difference between the updates' `created_at` and `sent_at` times. The difference is measured in hours.
 
 ```{r echo = FALSE, warning = FALSE, message = FALSE}
 # plot distribution of hours to send
@@ -76,9 +86,9 @@ ggplot(updates, aes(x = hours_to_send)) +
        subtitle = "All posts created in past six months")
 ```
 
-As we can see, most posts are scheduled to go out in a very short period of time. There is a long tail of updates that were scheduled far in advance. Now let's calculate the 75th percentile for all users. This will tell us, for each user, the number of hours for which 75% of their posts were scheduled in advance.
+As we might have guessed, most posts are scheduled to go out in a very short period of time and there is a long tail of updates that were scheduled far in advance. This distribution visualizes the differences between `created_at` and `sent_at` times for all updates. We're more interested in looking at this data on a _user_ basis, so let's create a summary statistic for each user.
 
-We'll only include users that scheduled at least 4 posts
+We'll use the 75th percentile for the `hours_to_send` metric all users that have scheduled at least 4 updates. This will tell us, for each user, the number of hours for which 75% of their posts were scheduled in advance.
 
 ```{r}
 # calculate 75% quantile
@@ -103,4 +113,23 @@ ggplot(by_user, aes(x = percentile)) +
        subtitle = "Number of Hours For Which 75% of Posts Are Scheduled In Advance")
 ```
 
-Most users schedule most of their updates for the same day.
+Most users schedule most of their updates to be sent within 24 hours. However, there is also a long tail of users who have scheduled most of their updates to be sent far into the future. Visualizing the cumulative distribution function (CDF) will help us better summarise the effects of this long tail.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+# plot distribution of percentiles
+ggplot(by_user, aes(x = percentile)) +
+  stat_ecdf() +
+  coord_cartesian(xlim = c(0, 240)) +
+  scale_x_continuous(limits = c(0, 240), breaks = seq(0, 240, 24)) +
+  scale_y_continuous(labels = percent, breaks = seq(0, 1, 0.2)) +
+  buffer_theme() +
+  labs(x = "Number of Hours Between Created and Sent Dates", y = NULL,
+       title = "Number of Hours Scheduled in Advance",
+       subtitle = "Number of Hours For Which 75% of Posts Are Scheduled In Advance")
+```
+
+The CDF shows us that almost all users schedule most of their updates to be sent within 10 days. Around 53% of users schedule most of their posts to be sent within 24 hours. This means that around 47% of users scheduled most of their posts to be sent more than 24 hours later. 
+
+Around 67% of users scheduled most of their posts to be sent within 48 hours, which implies that a third of users scheduled most of their posts to be sent more than 48 hours later.
+
+Around 94% of users scheduled most of their posts to be sent within the week, which implies that around 6% of users scheduled most of their posts to be sent more than one week later.

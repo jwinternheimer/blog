@@ -9,8 +9,8 @@ tags: []
 
 
 
-<p>Buffer is a tool that allows people to schedule their social media posts in advance. In this analysis we will explore how far in advance users schedule their posts.</p>
-<p>To do this we will compute some summary statistics for users that have scheduled posts in the past month. Then, we will summarise those summary statistics to try to understand the overall population of users.</p>
+<p>Buffer is a tool that allows people to schedule their social media posts in advance. In this analysis we will explore how far in advance users schedule their posts. If users don’t schedule many posts very far out in advance, it may have some implications for how we develop the product in the future.</p>
+<p>To do this we will compute some summary statistics for a sample of users that have scheduled posts in the past six months. Then, we will summarise those summary statistics to try to understand the overall population of users.</p>
 <div id="data-collection" class="section level2">
 <h2>Data Collection</h2>
 <p>We’ll gather one million updates that were created in the past month.</p>
@@ -30,10 +30,14 @@ and up.was_sent_with_buffer
 and up.created_at &lt; current_date - 60
 order by random()
 limit 1000000</code></pre>
-<p>We have around 900 thousand updates created in the past six months. Let’s plot the distribution of the number of hours in advance people scheduled their posts.</p>
+<p>We have around 918 thousand updates created in the past six months.</p>
+</div>
+<div id="exploratory-plots" class="section level2">
+<h2>Exploratory Plots</h2>
+<p>Let’s begin by plotting the distribution of the number of hours in advance people scheduled their posts. The actual metric that we are plotting the distribution of is the difference between the updates’ <code>created_at</code> and <code>sent_at</code> times. The difference is measured in hours.</p>
 <p><img src="/post/2018-12-03-how-far-in-advance-users-schedule-posts_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
-<p>As we can see, most posts are scheduled to go out in a very short period of time. There is a long tail of updates that were scheduled far in advance. Now let’s calculate the 75th percentile for all users. This will tell us, for each user, the number of hours for which 75% of their posts were scheduled in advance.</p>
-<p>We’ll only include users that scheduled at least 4 posts</p>
+<p>As we might have guessed, most posts are scheduled to go out in a very short period of time and there is a long tail of updates that were scheduled far in advance. This distribution visualizes the differences between <code>created_at</code> and <code>sent_at</code> times for all updates. We’re more interested in looking at this data on a <em>user</em> basis, so let’s create a summary statistic for each user.</p>
+<p>We’ll use the 75th percentile for the <code>hours_to_send</code> metric all users that have scheduled at least 4 updates. This will tell us, for each user, the number of hours for which 75% of their posts were scheduled in advance.</p>
 <pre class="r"><code># calculate 75% quantile
 by_user &lt;- updates %&gt;% 
   group_by(user_id) %&gt;% 
@@ -42,5 +46,9 @@ by_user &lt;- updates %&gt;%
   filter(updates &gt;= 4)</code></pre>
 <p>Now let’s plot this metric for the 50 thousand users in our dataset.</p>
 <p><img src="/post/2018-12-03-how-far-in-advance-users-schedule-posts_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
-<p>Most users schedule most of their updates for the same day.</p>
+<p>Most users schedule most of their updates to be sent within 24 hours. However, there is also a long tail of users who have scheduled most of their updates to be sent far into the future. Visualizing the cumulative distribution function (CDF) will help us better summarise the effects of this long tail.</p>
+<p><img src="/post/2018-12-03-how-far-in-advance-users-schedule-posts_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p>The CDF shows us that almost all users schedule most of their updates to be sent within 10 days. Around 53% of users schedule most of their posts to be sent within 24 hours. This means that around 47% of users scheduled most of their posts to be sent more than 24 hours later.</p>
+<p>Around 67% of users scheduled most of their posts to be sent within 48 hours, which implies that a third of users scheduled most of their posts to be sent more than 48 hours later.</p>
+<p>Around 94% of users scheduled most of their posts to be sent within the week, which implies that around 6% of users scheduled most of their posts to be sent more than one week later.</p>
 </div>
