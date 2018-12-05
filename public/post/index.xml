@@ -6,10 +6,20 @@
     <description>Recent content in Posts on A Data Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 04 Dec 2018 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Wed, 05 Dec 2018 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/post/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Pricing Changes’ Effects on Mobile Revenue </title>
+      <link>/2018/12/05/pricing-changes-effects-on-mobile-revenue/</link>
+      <pubDate>Wed, 05 Dec 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/2018/12/05/pricing-changes-effects-on-mobile-revenue/</guid>
+      <description>On March 22, 2018 we renamed the Awesome Plan to the Pro Plan, and changed its price from $10/mo to $15/mo. We announced the change and offered a promotion to let users lock in the $10/mo. price one month earlier, on February 22.
+In this analysis we’ll analyze the effect that the price change has had on mobile revenue. In our previous analyses we’ve focused only on Stripe revenue and overlooked mobile.</description>
+    </item>
     
     <item>
       <title>Who are Buffer’s Target Customers?</title>

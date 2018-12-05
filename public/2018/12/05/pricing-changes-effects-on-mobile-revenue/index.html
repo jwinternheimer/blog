@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Hugo 0.51" />
+
+
+<title>Pricing Changes’ Effects on Mobile Revenue  - A Data Blog</title>
+<meta property="og:title" content="Pricing Changes’ Effects on Mobile Revenue  - A Data Blog">
+
+
+
+  
+
+
+
+
+
+
+
+
+<link href='//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css' rel='stylesheet' type='text/css' />
+
+
+
+<link rel="stylesheet" href="/css/fonts.css" media="all">
+<link rel="stylesheet" href="/css/main.css" media="all">
+
+
+
+  </head>
+  <body>
+    <div class="wrapper">
+      <header class="header">
+        <nav class="nav">
+  <a href="/" class="nav-logo">
+    <img src="/images/dilbert.png"
+         width="50"
+         height="50"
+         alt="Logo">
+  </a>
+
+  <ul class="nav-links">
+    
+    <li><a href="https://github.com/jwinternheimer">GitHub</a></li>
+    
+    <li><a href="https://twitter.com/julheimer">Twitter</a></li>
+    
+  </ul>
+</nav>
+
+      </header>
+
+
+<main class="content" role="main">
+
+  <article class="article">
+    
+    <span class="article-duration">4 min read</span>
+    
+
+    <h1 class="article-title">Pricing Changes’ Effects on Mobile Revenue </h1>
+
+    
+    <span class="article-date">2018/12/05</span>
+    
+
+    <div class="article-content">
+      
+
+
+<p>On March 22, 2018 we renamed the Awesome Plan to the Pro Plan, and changed its price from $10/mo to $15/mo. We announced the change and offered a promotion to let users lock in the $10/mo. price one month earlier, on February 22.</p>
+<p>In this analysis we’ll analyze the effect that the price change has had on <em>mobile</em> revenue. In our previous analyses we’ve focused only on Stripe revenue and overlooked mobile. This analysis is at least 6 months late, but better late than never.</p>
+<p>We’ll utilize the Causal Impact package to estimate what MRR would have been without the price change and calculate the effect size from there. It’s important to note that the effect of the annual plan promotion likely interacts with the effect of the price change, so any effect on MRR will have come as a result of both events.</p>
+<p>We’ll collect mobile MRR data for all dates since June 2017.</p>
+<pre class="sql"><code>select
+  date(date) as date
+  , plan_id
+  , gateway
+  , billing_cycle
+  , total_mrr
+from dbt.daily_mrr_values
+where gateway in (&#39;Apple&#39;, &#39;Android&#39;)
+and date &gt;= &#39;2017-06-01&#39;</code></pre>
+<p>Now that we’ve collected the data, let’s plot mobile MRR over the course of 2018.</p>
+<p><img src="/post/2018-12-05-pricing-changes-effects-on-mobile-revenue_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>Oh dear. The red dotted line represents the date that the price change fully went into effect. Although revenue growth was already slowing down for Android and Apple, the price change seems to have had quite a negative effect.</p>
+<p><img src="/post/2018-12-05-pricing-changes-effects-on-mobile-revenue_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<div id="measuring-the-effect-on-mrr" class="section level2">
+<h2>Measuring the Effect on MRR</h2>
+<p>We’ll use a technique called Causal Impact for causal inference. Essentially, we take MRR growth before the pricing change and forecast it into the future, and compare the forecast with the observed values. The difference between the counterfactual (what MRR growth would have happened without the pricing change) and the observed MRR growth numbers is our estimated effect size.</p>
+<p>We’ll also try to isolate the effect of the price change by excluding the weeks during which the promotional offer had a large effect. We do this by defining the “post-intervention period” as the weeks from April 2 onwards.</p>
+<p>The “pre-intervention period”&quot; includes dates from June 1, 2017 to the week of February 26, which is the week that we announced the price change and the offer to lock in the lower prices. We use the average MRR growth from the dates in the pre-intervention period to create our forecast of what MRR growth would have looked like without the pricing change. In this case, the simple average of is used.</p>
+<p><strong><em>You’ll notice that we’ve left out a few weeks in March. The weeks of March 19 and March 26 saw unusually high MRR growth, and it’s my assumption is that this was primarily due to our offer to let users lock in the lower prices. We’ll use the weeks outside of this time window for our analysis</em></strong>.</p>
+<p>To perform inference, we run the analysis using the <code>CausalImpact</code> command.</p>
+<pre class="r"><code># run analysis
+impact &lt;- CausalImpact(mrr_ts, pre.period, post.period, model.args = list(niter = 5000))
+
+# plot impact
+plot(impact) +
+  labs(title = &quot;Impact on Mobile MRR&quot;, subtitle = &quot;Estimated Cumulative Loss of $20K in MRR&quot;) +
+  scale_y_continuous(labels = dollar) +
+  buffer_theme()</code></pre>
+<p><img src="/post/2018-12-05-pricing-changes-effects-on-mobile-revenue_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<p>The pre-intervention period includes all data to the left of the first vertical dotted line, and the post-intervention period includes all data to the right of the second vertical dotted line.</p>
+<p>The top panel in the graph shows the actual observed data (the black line) as well as the counterfactual, which is our best guess at what daily MRR growth would have been had we not introduced a new plan.</p>
+<p>The second panel displays the estimated effect that the price change had on MRR growth each day, and the bottom panel shows the cumulative effect over time on daily MRR growth.</p>
+<p>Because there are so many points, it’s difficult to see the pointwise estimates, i.e. the the estimated change in daily MRR growth for each day. The cumulative effect of these daily changes in MRR growth can be clearly seen in the bottom panel however. The cumulative effect appears to be somewhere around a $20 thousand loss in MRR.</p>
+<p>Lets’s look at the summary of our causal impact model.</p>
+<pre class="r"><code># get summary
+summary(impact)</code></pre>
+<pre><code>## Posterior inference {CausalImpact}
+## 
+##                          Average         Cumulative     
+## Actual                   -34             -8222          
+## Prediction (s.d.)        44 (29)         10724 (7173)   
+## 95% CI                   [-14, 101]      [-3326, 24632] 
+##                                                         
+## Absolute effect (s.d.)   -77 (29)        -18946 (7173)  
+## 95% CI                   [-134, -20]     [-32853, -4896]
+##                                                         
+## Relative effect (s.d.)   -177% (67%)     -177% (67%)    
+## 95% CI                   [-306%, -46%]   [-306%, -46%]  
+## 
+## Posterior tail-area probability p:   0.004
+## Posterior prob. of a causal effect:  99.59992%
+## 
+## For more details, type: summary(impact, &quot;report&quot;)</code></pre>
+<p>The probability of a true causal effect is well over 99%. Average daily MRR growth for the mobile apps was $44 per day before February 26, and -$34 per day for the dates following March 26. This equates a relative effect of around -177%.</p>
+</div>
+
+    </div>
+  </article>
+
+  
+
+
+</main>
+
+      <footer class="footer">
+        <ul class="footer-links">
+          <li>
+            <a href="/index.xml" type="application/rss+xml" target="_blank">RSS feed</a>
+          </li>
+          <li>
+            <a href="https://gohugo.io/" class="footer-links-kudos">Made with <img src="/images/hugo-logo.png" alt="Img link to Hugo website" width="22" height="22"></a>
+          </li>
+        </ul>
+      </footer>
+
+    </div>
+    
+
+
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+
+
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/r.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/yaml.min.js"></script>
+<script>hljs.configure({languages: []}); hljs.initHighlightingOnLoad();</script>
+
+
+
+    
+<script src="/js/math-code.js"></script>
+<script async src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+
+
+    
+  </body>
+</html>
+
