@@ -14,7 +14,7 @@ tags: []
 <p>We’ll utilize the Causal Impact package to estimate what MRR would have been without the price change and calculate the effect size from there. It’s important to note that the effect of the annual plan promotion likely interacts with the effect of the price change, so any effect on MRR will have come as a result of both events.</p>
 <div id="summary" class="section level2">
 <h2>Summary</h2>
-<p>We definitely underestimated the impact that the price change woudl have on mobile revenue. The impact on mobile revenue is very different than that on web-based revenue. Perhaps people are much more sensitive to price differences when paying for something in the app stores. The cumulative effect of the price changes on mobile revenue seems to be somewhere around a $20K loss in MRR.</p>
+<p>We seems to have underestimated the impact that the price change would have on mobile revenue. The impact on mobile is very different than that on web-based revenue. Perhaps people are more sensitive to price differences when paying for something in the mobile app stores. The cumulative effect of the price changes on mobile revenue seems to be somewhere around a $20K loss in MRR.</p>
 <p>We’ll collect mobile MRR data for all dates since June 2017.</p>
 <pre class="sql"><code>select
   date(date) as date
@@ -57,17 +57,17 @@ summary(impact)</code></pre>
 ## 
 ##                          Average         Cumulative     
 ## Actual                   -34             -8222          
-## Prediction (s.d.)        44 (29)         10724 (7094)   
-## 95% CI                   [-15, 100]      [-3601, 24379] 
+## Prediction (s.d.)        44 (29)         10724 (7097)   
+## 95% CI                   [-14, 101]      [-3339, 24731] 
 ##                                                         
-## Absolute effect (s.d.)   -77 (29)        -18946 (7094)  
-## 95% CI                   [-133, -19]     [-32601, -4621]
+## Absolute effect (s.d.)   -77 (29)        -18946 (7097)  
+## 95% CI                   [-135, -20]     [-32953, -4883]
 ##                                                         
 ## Relative effect (s.d.)   -177% (66%)     -177% (66%)    
-## 95% CI                   [-304%, -43%]   [-304%, -43%]  
+## 95% CI                   [-307%, -46%]   [-307%, -46%]  
 ## 
-## Posterior tail-area probability p:   0.0046
-## Posterior prob. of a causal effect:  99.53991%
+## Posterior tail-area probability p:   0.0042
+## Posterior prob. of a causal effect:  99.57992%
 ## 
 ## For more details, type: summary(impact, &quot;report&quot;)</code></pre>
 <p>The probability of a true causal effect is well over 99%. Average daily MRR growth for the mobile apps was $44 per day before February 26, and -$34 per day for the dates following March 26. This equates a relative effect of around -177%.</p>

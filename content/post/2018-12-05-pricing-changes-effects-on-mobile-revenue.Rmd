@@ -14,7 +14,7 @@ In this analysis we'll analyze the effect that the price change has had on _mobi
 We'll utilize the Causal Impact package to estimate what MRR would have been without the price change and calculate the effect size from there. It's important to note that the effect of the annual plan promotion likely interacts with the effect of the price change, so any effect on MRR will have come as a result of both events.
 
 ## Summary
-We definitely underestimated the impact that the price change woudl have on mobile revenue. The impact on mobile revenue is very different than that on web-based revenue. Perhaps people are much more sensitive to price differences when paying for something in the app stores. The cumulative effect of the price changes on mobile revenue seems to be somewhere around a \$20K loss in MRR.
+We seems to have underestimated the impact that the price change would have on mobile revenue. The impact on mobile is very different than that on web-based revenue. Perhaps people are more sensitive to price differences when paying for something in the mobile app stores. The cumulative effect of the price changes on mobile revenue seems to be somewhere around a \$20K loss in MRR.
 
 ```{r include = FALSE, message = FALSE, warning = FALSE}
 # load libraries
