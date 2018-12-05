@@ -12,6 +12,9 @@ tags: []
 <p>On March 22, 2018 we renamed the Awesome Plan to the Pro Plan, and changed its price from $10/mo to $15/mo. We announced the change and offered a promotion to let users lock in the $10/mo. price one month earlier, on February 22.</p>
 <p>In this analysis we’ll analyze the effect that the price change has had on <em>mobile</em> revenue. In our previous analyses we’ve focused only on Stripe revenue and overlooked mobile. This analysis is at least 6 months late, but better late than never.</p>
 <p>We’ll utilize the Causal Impact package to estimate what MRR would have been without the price change and calculate the effect size from there. It’s important to note that the effect of the annual plan promotion likely interacts with the effect of the price change, so any effect on MRR will have come as a result of both events.</p>
+<div id="summary" class="section level2">
+<h2>Summary</h2>
+<p>We definitely underestimated the impact that the price change woudl have on mobile revenue. The impact on mobile revenue is very different than that on web-based revenue. Perhaps people are much more sensitive to price differences when paying for something in the app stores. The cumulative effect of the price changes on mobile revenue seems to be somewhere around a $20K loss in MRR.</p>
 <p>We’ll collect mobile MRR data for all dates since June 2017.</p>
 <pre class="sql"><code>select
   date(date) as date
@@ -26,6 +29,7 @@ and date &gt;= &#39;2017-06-01&#39;</code></pre>
 <p><img src="/post/2018-12-05-pricing-changes-effects-on-mobile-revenue_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
 <p>Oh dear. The red dotted line represents the date that the price change fully went into effect. Although revenue growth was already slowing down for Android and Apple, the price change seems to have had quite a negative effect.</p>
 <p><img src="/post/2018-12-05-pricing-changes-effects-on-mobile-revenue_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+</div>
 <div id="measuring-the-effect-on-mrr" class="section level2">
 <h2>Measuring the Effect on MRR</h2>
 <p>We’ll use a technique called Causal Impact for causal inference. Essentially, we take MRR growth before the pricing change and forecast it into the future, and compare the forecast with the observed values. The difference between the counterfactual (what MRR growth would have happened without the pricing change) and the observed MRR growth numbers is our estimated effect size.</p>
@@ -53,17 +57,17 @@ summary(impact)</code></pre>
 ## 
 ##                          Average         Cumulative     
 ## Actual                   -34             -8222          
-## Prediction (s.d.)        44 (29)         10724 (7173)   
-## 95% CI                   [-14, 101]      [-3326, 24632] 
+## Prediction (s.d.)        44 (29)         10724 (7094)   
+## 95% CI                   [-15, 100]      [-3601, 24379] 
 ##                                                         
-## Absolute effect (s.d.)   -77 (29)        -18946 (7173)  
-## 95% CI                   [-134, -20]     [-32853, -4896]
+## Absolute effect (s.d.)   -77 (29)        -18946 (7094)  
+## 95% CI                   [-133, -19]     [-32601, -4621]
 ##                                                         
-## Relative effect (s.d.)   -177% (67%)     -177% (67%)    
-## 95% CI                   [-306%, -46%]   [-306%, -46%]  
+## Relative effect (s.d.)   -177% (66%)     -177% (66%)    
+## 95% CI                   [-304%, -43%]   [-304%, -43%]  
 ## 
-## Posterior tail-area probability p:   0.004
-## Posterior prob. of a causal effect:  99.59992%
+## Posterior tail-area probability p:   0.0046
+## Posterior prob. of a causal effect:  99.53991%
 ## 
 ## For more details, type: summary(impact, &quot;report&quot;)</code></pre>
 <p>The probability of a true causal effect is well over 99%. Average daily MRR growth for the mobile apps was $44 per day before February 26, and -$34 per day for the dates following March 26. This equates a relative effect of around -177%.</p>
