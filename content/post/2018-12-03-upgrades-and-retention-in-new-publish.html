@@ -10,11 +10,11 @@ tags: []
 
 
 <p>Over the past few months Buffer has been rolling out a newly designed dashboard, which we refer to as “New Publish”. The old dashboard, labeled “Buffer Classic”, is still being served to the majority of people who create a Buffer account.</p>
-<p>The purpose of this analysis is to explore the rates at which people upgrade to paid plans in New Publish and Buffer Classic, and how long they took to do it.</p>
+<p>In this analysis we will explore the rates at which people upgrade to paid plans in New Publish and Buffer Classic, and how long they take to do it.</p>
 <div id="summary" class="section level2">
 <h2>Summary</h2>
-<p>The rate at which new users upgrade to Pro plans is significantly higher for users of Buffer Classic. The difference between the Pro upgrade rates of Buffer Classic and New Publish users grows as the number of days since signing up increases.</p>
-<p>This data suggests that improving onboarding and retention rates of New Publish users, especially in the first week, could help reduct the difference between the upgrade rates. We should monitor the retention rates of New Publish users more closely and reduce the gap between New Publish and Buffer Classic</p>
+<p>The rate at which new users upgrade to Pro plans is significantly higher for users of Buffer Classic. The difference between the Pro upgrade rates of Buffer Classic and New Publish users grows as the number of days since signing up increases, i.e. the gap between the upgrade rates are wider at day 7 than they are at day 3.</p>
+<p>The upgrade data suggests that improving onboarding and retention rates of New Publish users, especially in the first week, could help reduct the difference between the upgrade rates. It’s my opinion that we should monitor the retention rates of New Publish users more closely and reduce the gap between New Publish and Buffer Classic. In theory, this would expose more users to the upgrade paths and allow more users of New Publish to upgrade to a Pro plan.</p>
 </div>
 <div id="data-collection" class="section level2">
 <h2>Data Collection</h2>
@@ -43,7 +43,7 @@ left join dbt.user_upgrade_facts as uf
 <p>This chart tells us that the proportion of users that upgrade is substantially higher in Buffer Classic than it is in New Publish.</p>
 <p>There are a couple of factors that we need to control for. For a while, there was a bug in New Publish that prevented users from upgrading. We fixed it around the end of September.</p>
 <p><img src="/post/2018-12-03-upgrades-and-retention-in-new-publish_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
-<p>Let’s only include data from October on. Also, New Publish users can’t upgrade to Business plans. :-| We’ll therefore exclude all Buffer Classic users that upgraded to Business plans in this comparison.</p>
+<p>Let’s only include data from October on. Also, New Publish users can’t upgrade to Business plans. We’ll therefore exclude all Buffer Classic users that upgraded to Business plans in this comparison.</p>
 <p><img src="/post/2018-12-03-upgrades-and-retention-in-new-publish_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
 <p>Even with these constraints, the upgrade rate is around 33% higher for users in Buffer Classic!</p>
 </div>
@@ -52,7 +52,10 @@ left join dbt.user_upgrade_facts as uf
 <p>I have a sneaking suspicion that the lower retention rates for users of New Publish play a significant role in the big delta between upgrade rates. Let’s calculate the Pro upgrade rates for each group, but only allow users 1 week to upgrade to a Pro plan.</p>
 <p><img src="/post/2018-12-03-upgrades-and-retention-in-new-publish_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
 <p>Upgrade rates are still consistently higher for Buffer Classic Users. Let’s try to see if that changes if we dynamically change the number of days that users have to upgrade.</p>
-<p><img src="/post/2018-12-03-upgrades-and-retention-in-new-publish_files/figure-html/unnamed-chunk-10-1.gif" /><!-- --></p>
+<div class="figure">
+<img src="/post/2018-12-03-upgrades-and-retention-in-new-publish_files/unnamed-chunk-10-1.gif" style="width:100.0%" />
+
+</div>
 <p>We can see that the upgrade rates start to diverge more quickly around 3 to 4 days after signing up. We can also plot the differences in the upgrade rates for each day after signing up.</p>
 <p><img src="/post/2018-12-03-upgrades-and-retention-in-new-publish_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
 <p>As we can see, the difference between the upgrade rates of Buffer Classic and New Publish grows most rapidly during the first week after signing up for Buffer. After the one week mark, the difference in upgrade rates remains relatively constant.</p>

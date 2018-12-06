@@ -9,12 +9,12 @@ tags: []
 
 Over the past few months Buffer has been rolling out a newly designed dashboard, which we refer to as "New Publish". The old dashboard, labeled "Buffer Classic", is still being served to the majority of people who create a Buffer account. 
 
-The purpose of this analysis is to explore the rates at which people upgrade to paid plans in New Publish and Buffer Classic, and how long they took to do it. 
+In this analysis we will explore the rates at which people upgrade to paid plans in New Publish and Buffer Classic, and how long they take to do it. 
 
 ## Summary
-The rate at which new users upgrade to Pro plans is significantly higher for users of Buffer Classic. The difference between the Pro upgrade rates of Buffer Classic and New Publish users grows as the number of days since signing up increases.
+The rate at which new users upgrade to Pro plans is significantly higher for users of Buffer Classic. The difference between the Pro upgrade rates of Buffer Classic and New Publish users grows as the number of days since signing up increases, i.e. the gap between the upgrade rates are wider at day 7 than they are at day 3.
 
-This data suggests that improving onboarding and retention rates of New Publish users, especially in the first week, could help reduct the difference between the upgrade rates. We should monitor the retention rates of New Publish users more closely and reduce the gap between New Publish and Buffer Classic
+The upgrade data suggests that improving onboarding and retention rates of New Publish users, especially in the first week, could help reduct the difference between the upgrade rates. It's my opinion that we should monitor the retention rates of New Publish users more closely and reduce the gap between New Publish and Buffer Classic. In theory, this would expose more users to the upgrade paths and allow more users of New Publish to upgrade to a Pro plan.
 
 ## Data Collection
 We'll collect the data from Redshift with the query below:
@@ -123,7 +123,7 @@ users %>%
        subtitle = "Includes upgrades to Business plans", color = "Group")
 ```
 
-Let's only include data from October on. Also, New Publish users can't upgrade to Business plans. :-| We'll therefore exclude all Buffer Classic users that upgraded to Business plans in this comparison.
+Let's only include data from October on. Also, New Publish users can't upgrade to Business plans. We'll therefore exclude all Buffer Classic users that upgraded to Business plans in this comparison.
 
 ```{r echo = FALSE}
 # plot overall upgrade rates
@@ -170,7 +170,7 @@ users %>%
 
 Upgrade rates are still consistently higher for Buffer Classic Users. Let's try to see if that changes if we dynamically change the number of days that users have to upgrade.
 
-```{r echo = FALSE , warning = FALSE, message = FALSE}
+```{r echo = FALSE , warning = FALSE, message = FALSE, eval = FALSE}
 library(gganimate)
 
 # calculate number of users in each group
@@ -210,10 +210,33 @@ ggplot(cumul_users, aes(x = ex_group, y = rate)) +
   ease_aes('linear')
 ```
 
+![](/post/2018-12-03-upgrades-and-retention-in-new-publish_files/unnamed-chunk-10-1.gif){width=100%}
+
 We can see that the upgrade rates start to diverge more quickly around 3 to 4 days after signing up. We can also plot the differences in the upgrade rates for each day after signing up.
 
 ```{r echo = FALSE, warning = FALSE, message = FALSE}
 library(tidyr)
+
+# calculate number of users in each group
+n_classic <- 91875
+n_new <- 17749
+
+# group by day
+by_day <- users %>% 
+  filter(signup_week > "2018-09-30" & signup_date < "2018-11-25") %>% 
+  group_by(number_of_days_to_upgrade, ex_group, did_user_upgrade_to_awesome) %>%
+  summarise(users = n_distinct(user_id)) %>% 
+  filter(did_user_upgrade_to_awesome) %>% 
+  filter(number_of_days_to_upgrade >= 0 & number_of_days_to_upgrade <= 21)
+
+# get cumulative sums
+cumul_users <- by_day %>% 
+  group_by(ex_group) %>% 
+  arrange(number_of_days_to_upgrade) %>% 
+  mutate(cs = cumsum(users)) %>% 
+  mutate(rate = ifelse(ex_group == "Buffer Classic", cs / n_classic, cs / n_new)) %>% 
+  filter(number_of_days_to_upgrade >= 0 & number_of_days_to_upgrade <= 21) %>% 
+  select(-did_user_upgrade_to_awesome)
 
 # spread data
 spread <- cumul_users %>% 
