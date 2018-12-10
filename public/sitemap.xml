@@ -3,6 +3,11 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
+    <loc>/2018/12/10/profile-connection-rates-in-buffer/</loc>
+    <lastmod>2018-12-10T00:00:00+00:00</lastmod>
+  </url>
+  
+  <url>
     <loc>/2018/12/05/pricing-changes-effects-on-mobile-revenue/</loc>
     <lastmod>2018-12-05T00:00:00+00:00</lastmod>
   </url>
@@ -34,7 +39,7 @@
   
   <url>
     <loc>/</loc>
-    <lastmod>2018-12-05T00:00:00+00:00</lastmod>
+    <lastmod>2018-12-10T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   
@@ -69,7 +74,7 @@
   
   <url>
     <loc>/post/</loc>
-    <lastmod>2018-12-05T00:00:00+00:00</lastmod>
+    <lastmod>2018-12-10T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   

@@ -1,0 +1,129 @@
+---
+title: Profile Connection Rates in Buffer
+author: ''
+date: '2018-12-10'
+slug: profile-connection-rates-in-buffer
+categories: []
+tags: []
+---
+
+In this analysis we will try to estimate how successful New Publish users are in connecting social accounts. We will define and calculate a measure of success for each social network, and look at how this success rate changes over time.
+
+We define a connection "attempt" as the event that occurs when a user selects a profile type after clicking the "Add a New Social Account" button in Org Admin. **_An attempt is considered successful if a profile of the same social is created for that user within 30 minutes of the connection attempt event_**.
+
+For the sake of simplicity, we excluded Google+ and Pinterest profiles from this analysis. 
+
+## Summary
+Linkedin profiles have the highest connection success rate at around 80%, followed by Twitter profiles (75%), Facebook pages (71%), and finally Instagram profiles (54%). The success rate of these connection attempts are consistent over time.
+
+## Data Collection
+We'll use the SQL query below to collect the data from Redshift. We'll only look at users that signed up on or after September 15, a somewhat arbitrary date. 
+
+For each network, we count the number of users that attempted to add a profile (they do this by clicking the "Add a Social Account" button in Org Admin), and we consider them successful if a new profile of the same type is created _within 30 minutes of clicking the button_.
+
+```{r include = FALSE}
+# load libraries
+library(buffer)
+library(dplyr)
+library(ggplot2) 
+library(scales)
+library(lubridate)
+
+# buffer ggplot theme
+buffer_theme <- function() {
+  theme_minimal(base_family = "Roboto Condensed") +
+    theme(plot.title = element_text(size = rel(1.5), face = "bold"),
+          plot.subtitle = element_text(size = rel(1.1)),
+          plot.caption = element_text(color = "#777777", vjust = 0),
+          axis.title = element_text(size = rel(.9), hjust = 0.95, face = "italic"),
+          panel.grid.major = element_line(size = rel(.1), color = "#000000"),
+          panel.grid.minor = element_line(size = rel(.05), color = "#000000"),
+          plot.background = element_rect(fill = '#F5F5F5', color = '#F5F5F5'),
+          panel.background = element_rect(fill = '#F5F5F5', color = '#F5F5F5'))
+}
+```
+
+```{r eval = FALSE, include = FALSE}
+# connect to redshift
+con <- redshift_connect()
+```
+
+```{sql eval = FALSE}
+select 
+  date_trunc('week', date(u.created_at)) as signup_week
+  , scope4 as network
+  , count(distinct a.user_id) as users_attempted_connection
+  , count(distinct p.user_id) as users_connected_profile
+from dbt.users as u
+inner join dbt.user_experiments as e
+  on u.id = e.user_id
+  and e.name like 'new_publish_new_buffer_free_users_phase%'
+  and e."group" = 'enabled'
+left join dbt.actions_taken as a
+  on u.id = a.user_id
+  and a.full_scope like 'business organization_admin add_social_account_to_organization%'
+  and a.created_at >= '2018-09-15'
+left join dbt.profiles as p
+  on p.user_id = a.user_id
+  and p.service = lower(a.scope4)
+  and p.created_at >= a.created_at
+  and p.created_at <= dateadd(minute, 30, a.created_at)
+where u.created_at >= '2018-10-01'
+group by 1, 2
+```
+
+```{r include = FALSE, eval = FALSE}
+# set as integer
+users$users_attempted_connection <- as.integer(users$users_attempted_connection)
+users$users_connected_profile <- as.integer(users$users_connected_profile)
+
+# replace experiment group names
+users <- users %>% 
+  filter(network != "Google+" & network != "Pinterest" & !is.na(network)) %>% 
+  mutate(rate = users_connected_profile / users_attempted_connection)
+```
+
+```{r include = FALSE}
+# save data
+# saveRDS(users, file = 'profile_connection_rates.rds')
+
+# load data
+users <- readRDS('profile_connection_rates.rds')
+```
+
+## Exploratory Analysis
+Now let's calculate the overall success rates for each social network. We do this by dividing the number of users that were able to successfully connect profiles for each network by the number of users that attempted to connect profiles from each network. 
+
+```{r echo = FALSE}
+# plot weekly connection rates
+users %>% 
+  group_by(network) %>% 
+  summarise(attempted = sum(users_attempted_connection), connected = sum(users_connected_profile)) %>% 
+  mutate(rate = connected / attempted) %>% 
+  ungroup() %>% 
+  mutate(network = reorder(network, rate)) %>% 
+  ggplot(aes(x = network, y = rate, fill = network)) +
+  geom_col() +
+  coord_flip() +
+  buffer_theme() +
+  theme(legend.position = "none") +
+  scale_y_continuous(labels = percent) +
+  labs(x = NULL, y = NULL, color = "Network", title = "Profile Connection Success Rate",
+       subtitle = "Linkedin profiles have highest success rate, Instagram have the lowest.")
+```
+
+Linkedin profiles have the highest connection success rate at around 80%, followed by Twitter profiles (75%), Facebook pages (71%), and finally Instagram profiles (54%). Instagram profiles have the lowest connection success rate by a wide margin.
+
+We can also view how these connection rates have changed over time.
+
+```{r echo = FALSE}
+# plot weekly connection rates
+ggplot(users, aes(x = signup_week, y = rate, color = network)) +
+  geom_line(size = 1) +
+  buffer_theme() +
+  scale_y_continuous(labels = percent) +
+  labs(x = NULL, y = NULL, color = "Network", title = "Profile Connection Success Rate",
+       subtitle = "Linkedin profiles have highest success rate, Instagram have the lowest.")
+```
+
+We can see here that the connection success rates are fairly consistent over time. Linkedin is consistently the highest and Instagram is consistently the lowest. 

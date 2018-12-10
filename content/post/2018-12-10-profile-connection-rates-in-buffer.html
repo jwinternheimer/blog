@@ -1,0 +1,53 @@
+---
+title: Profile Connection Rates in Buffer
+author: ''
+date: '2018-12-10'
+slug: profile-connection-rates-in-buffer
+categories: []
+tags: []
+---
+
+
+
+<p>In this analysis we will try to estimate how successful New Publish users are in connecting social accounts. We will define and calculate a measure of success for each social network, and look at how this success rate changes over time.</p>
+<p>We define a connection “attempt” as the event that occurs when a user selects a profile type after clicking the “Add a New Social Account” button in Org Admin. <strong><em>An attempt is considered successful if a profile of the same social is created for that user within 30 minutes of the connection attempt event</em></strong>.</p>
+<p>For the sake of simplicity, we excluded Google+ and Pinterest profiles from this analysis.</p>
+<div id="summary" class="section level2">
+<h2>Summary</h2>
+<p>Linkedin profiles have the highest connection success rate at around 80%, followed by Twitter profiles (75%), Facebook pages (71%), and finally Instagram profiles (54%). The success rate of these connection attempts are consistent over time.</p>
+</div>
+<div id="data-collection" class="section level2">
+<h2>Data Collection</h2>
+<p>We’ll use the SQL query below to collect the data from Redshift. We’ll only look at users that signed up on or after September 15, a somewhat arbitrary date.</p>
+<p>For each network, we count the number of users that attempted to add a profile (they do this by clicking the “Add a Social Account” button in Org Admin), and we consider them successful if a new profile of the same type is created <em>within 30 minutes of clicking the button</em>.</p>
+<pre class="sql"><code>select 
+  date_trunc(&#39;week&#39;, date(u.created_at)) as signup_week
+  , scope4 as network
+  , count(distinct a.user_id) as users_attempted_connection
+  , count(distinct p.user_id) as users_connected_profile
+from dbt.users as u
+inner join dbt.user_experiments as e
+  on u.id = e.user_id
+  and e.name like &#39;new_publish_new_buffer_free_users_phase%&#39;
+  and e.&quot;group&quot; = &#39;enabled&#39;
+left join dbt.actions_taken as a
+  on u.id = a.user_id
+  and a.full_scope like &#39;business organization_admin add_social_account_to_organization%&#39;
+  and a.created_at &gt;= &#39;2018-09-15&#39;
+left join dbt.profiles as p
+  on p.user_id = a.user_id
+  and p.service = lower(a.scope4)
+  and p.created_at &gt;= a.created_at
+  and p.created_at &lt;= dateadd(minute, 30, a.created_at)
+where u.created_at &gt;= &#39;2018-10-01&#39;
+group by 1, 2</code></pre>
+</div>
+<div id="exploratory-analysis" class="section level2">
+<h2>Exploratory Analysis</h2>
+<p>Now let’s calculate the overall success rates for each social network. We do this by dividing the number of users that were able to successfully connect profiles for each network by the number of users that attempted to connect profiles from each network.</p>
+<p><img src="/post/2018-12-10-profile-connection-rates-in-buffer_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<p>Linkedin profiles have the highest connection success rate at around 80%, followed by Twitter profiles (75%), Facebook pages (71%), and finally Instagram profiles (54%). Instagram profiles have the lowest connection success rate by a wide margin.</p>
+<p>We can also view how these connection rates have changed over time.</p>
+<p><img src="/post/2018-12-10-profile-connection-rates-in-buffer_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<p>We can see here that the connection success rates are fairly consistent over time. Linkedin is consistently the highest and Instagram is consistently the lowest.</p>
+</div>

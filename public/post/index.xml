@@ -6,10 +6,20 @@
     <description>Recent content in Posts on A Data Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 05 Dec 2018 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Mon, 10 Dec 2018 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/post/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Profile Connection Rates in Buffer</title>
+      <link>/2018/12/10/profile-connection-rates-in-buffer/</link>
+      <pubDate>Mon, 10 Dec 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/2018/12/10/profile-connection-rates-in-buffer/</guid>
+      <description>In this analysis we will try to estimate how successful New Publish users are in connecting social accounts. We will define and calculate a measure of success for each social network, and look at how this success rate changes over time.
+We define a connection “attempt” as the event that occurs when a user selects a profile type after clicking the “Add a New Social Account” button in Org Admin.</description>
+    </item>
     
     <item>
       <title>Pricing Changes’ Effects on Mobile Revenue </title>
