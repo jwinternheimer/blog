@@ -79,7 +79,7 @@
 </div>
 <div id="data-collection" class="section level2">
 <h2>Data Collection</h2>
-<p>We’ll use the SQL query below to collect the data from Redshift. We’ll only look at users that signed up on or after September 15, a somewhat arbitrary date.</p>
+<p>We’ll use the SQL query below to collect the data from Redshift. We’ll only look at users that signed up on or after October 1, a somewhat arbitrary date.</p>
 <p>For each network, we count the number of users that attempted to add a profile (they do this by clicking the “Add a Social Account” button in Org Admin), and we consider them successful if a new profile of the same type is created <em>within 30 minutes of clicking the button</em>.</p>
 <pre class="sql"><code>select 
   date_trunc(&#39;week&#39;, date(u.created_at)) as signup_week
@@ -94,7 +94,7 @@ inner join dbt.user_experiments as e
 left join dbt.actions_taken as a
   on u.id = a.user_id
   and a.full_scope like &#39;business organization_admin add_social_account_to_organization%&#39;
-  and a.created_at &gt;= &#39;2018-09-15&#39;
+  and a.created_at &gt;= &#39;2018-10-01&#39;
 left join dbt.profiles as p
   on p.user_id = a.user_id
   and p.service = lower(a.scope4)

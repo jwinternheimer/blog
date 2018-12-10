@@ -17,7 +17,7 @@ For the sake of simplicity, we excluded Google+ and Pinterest profiles from this
 Linkedin profiles have the highest connection success rate at around 80%, followed by Twitter profiles (75%), Facebook pages (71%), and finally Instagram profiles (54%). The success rate of these connection attempts are consistent over time.
 
 ## Data Collection
-We'll use the SQL query below to collect the data from Redshift. We'll only look at users that signed up on or after September 15, a somewhat arbitrary date. 
+We'll use the SQL query below to collect the data from Redshift. We'll only look at users that signed up on or after October 1, a somewhat arbitrary date. 
 
 For each network, we count the number of users that attempted to add a profile (they do this by clicking the "Add a Social Account" button in Org Admin), and we consider them successful if a new profile of the same type is created _within 30 minutes of clicking the button_.
 
@@ -62,7 +62,7 @@ inner join dbt.user_experiments as e
 left join dbt.actions_taken as a
   on u.id = a.user_id
   and a.full_scope like 'business organization_admin add_social_account_to_organization%'
-  and a.created_at >= '2018-09-15'
+  and a.created_at >= '2018-10-01'
 left join dbt.profiles as p
   on p.user_id = a.user_id
   and p.service = lower(a.scope4)
