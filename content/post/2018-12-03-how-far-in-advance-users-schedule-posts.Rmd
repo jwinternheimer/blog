@@ -12,11 +12,11 @@ Buffer is a tool that allows people to schedule their social media posts in adva
 To do this we will compute some summary statistics for a sample of users that have scheduled posts in the past six months. Then, we will summarise those summary statistics to try to understand the overall population of users.
 
 ## Summary
-Almost all users scheduled most (at least 75%) of their updates to be sent within 10 days. Around 53% of users schedule most of their posts to be sent within 24 hours. This means that around 47% of users scheduled most of their posts to be sent more than 24 hours later. 
+Almost all users scheduled most (at least 75%) of their updates to be sent within 10 days. Around 53% of users schedule most of their posts to be sent within 24 hours. This means that around 47% of _all_ users scheduled most of their posts to be sent more than 24 hours later. 
 
-Around 67% of users scheduled most of their posts to be sent within 48 hours, which implies that a third of users scheduled most of their posts to be sent more than 48 hours later.
+The distribution looks much different for paying customers. Around half of paying customers schedule most of their posts 2 or more days into the future. Around 38% of paying customers schedule most of their posts 3 or more days into the future, and 10% of paying customers schedule most of their posts at least 1 week in advance. 
 
-Around 94% of users scheduled most of their posts to be sent within the week, which implies that around 6% of users scheduled most of their posts to be sent more than one week later.
+The number of profiles that a customer has seems to make little difference on the amount of time that posts are scheduled in advance.
 
 ## Data Collection
 We'll gather one million updates that were created in the past month.
@@ -28,6 +28,19 @@ library(dplyr)
 library(ggplot2)
 library(scales)
 library(lubridate)
+
+# buffer ggplot theme
+buffer_theme <- function() {
+  theme_minimal(base_family = "Roboto Condensed") +
+    theme(plot.title = element_text(size = rel(1.5), face = "bold"),
+          plot.subtitle = element_text(size = rel(1.1)),
+          plot.caption = element_text(color = "#777777", vjust = 0),
+          axis.title = element_text(size = rel(.9), hjust = 0.95, face = "italic"),
+          panel.grid.major = element_line(size = rel(.1), color = "#000000"),
+          panel.grid.minor = element_line(size = rel(.05), color = "#000000"),
+          plot.background = element_rect(fill = '#F5F5F5', color = '#F5F5F5'),
+          panel.background = element_rect(fill = '#F5F5F5', color = '#F5F5F5'))
+}
 ```
 
 ```{r include = FALSE, eval = FALSE}
@@ -44,9 +57,12 @@ select
   , up.sent_at
   , datediff(hour, up.created_at, up.sent_at) as hours_to_send
   , up.profile_service
+  , pf.number_of_active_profiles
 from dbt.updates as up
 inner join dbt.users as u
   on up.user_id = u.id
+inner join dbt.user_profile_facts as pf
+  on pf.user_id = u.id
 where up.created_at > current_date - 180
 and up.was_sent_with_buffer
 and up.created_at < current_date - 60
@@ -57,6 +73,7 @@ limit 1000000
 ```{r include = FALSE, eval = FALSE}
 # set as integer
 updates$hours_to_send <- as.integer(updates$hours_to_send)
+updates$number_of_active_profiles <- as.integer(updates$number_of_active_profiles)
 
 # remove nas
 updates <- updates %>% filter(!is.na(hours_to_send) & hours_to_send >= 0)
@@ -70,7 +87,7 @@ saveRDS(updates, file = 'time_to_send_updates.rds')
 updates <- readRDS('time_to_send_updates.rds')
 ```
 
-We have around 918 thousand updates created in the past six months. 
+We have around 920 thousand updates created in the past six months. 
 
 ## Exploratory Plots
 Let's begin by plotting the distribution of the number of hours in advance people scheduled their posts. The actual metric that we are plotting the distribution of is the difference between the updates' `created_at` and `sent_at` times. The difference is measured in hours.
@@ -93,7 +110,8 @@ We'll use the 75th percentile for the `hours_to_send` metric all users that have
 ```{r}
 # calculate 75% quantile
 by_user <- updates %>% 
-  group_by(user_id) %>% 
+  mutate(is_paying = plan != "individual") %>% 
+  group_by(user_id, is_paying, number_of_active_profiles) %>% 
   summarise(updates = n_distinct(update_id),
             percentile = quantile(hours_to_send, probs = 0.75)[[1]]) %>% 
   filter(updates >= 4)
@@ -133,3 +151,56 @@ The CDF shows us that almost all users schedule most of their updates to be sent
 Around 67% of users scheduled most of their posts to be sent within 48 hours, which implies that a third of users scheduled most of their posts to be sent more than 48 hours later.
 
 Around 94% of users scheduled most of their posts to be sent within the week, which implies that around 6% of users scheduled most of their posts to be sent more than one week later.
+
+What if we now separated paying users from free users?
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+# plot distribution of percentiles
+ggplot(filter(by_user, !is.na(is_paying)), aes(x = percentile, color = is_paying)) +
+  stat_ecdf() +
+  coord_cartesian(xlim = c(0, 240)) +
+  scale_x_continuous(limits = c(0, 240), breaks = seq(0, 240, 24)) +
+  scale_y_continuous(labels = percent, breaks = seq(0, 1, 0.2)) +
+  buffer_theme() +
+  labs(x = "Number of Hours Between Created and Sent Dates", y = NULL,
+       title = "Number of Hours Scheduled in Advance",
+       subtitle = "Number of Hours For Which 75% of Posts Are Scheduled In Advance",
+       color = "Paying Customer")
+```
+
+We can see here that the distribution looks much different for paying customers. Around half of paying customers schedule most of their posts 2 or more days into the future. Around 38% of paying customers schedule most of their posts 3 or more days into the future, and 10% of paying customers schedule most of their posts at least 1 week in advance. 
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+# plot distribution of percentiles
+ggplot(filter(by_user, !is.na(is_paying)), aes(x = percentile, color = is_paying, fill = is_paying)) +
+  geom_density(alpha = 0.4) +
+  coord_cartesian(xlim = c(0, 240)) +
+  scale_x_continuous(limits = c(0, 240), breaks = seq(0, 240, 24)) +
+  scale_y_continuous(labels = percent) +
+  buffer_theme() +
+  labs(x = "Number of Hours Between Created and Sent Dates", y = NULL,
+       title = "Number of Hours Scheduled in Advance",
+       subtitle = "Number of Hours For Which 75% of Posts Are Scheduled In Advance",
+       color = "Paying Customer",
+       fill = "Paying Customer")
+```
+
+This plot illustrates that paying customers schedule posts in a different way. Less users are scheduling most of their posts "just in time". Now let's zero in a bit and look at customers that are more like our target customers -- let's see what the distribution of `hours_to_send` looks like for paying customers with less than 5 profiles.
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+by_user %>% 
+  filter(is_paying) %>% 
+  mutate(target_customer = number_of_active_profiles <= 4) %>% 
+  ggplot(aes(x = percentile, color = target_customer)) +
+  stat_ecdf() +
+  coord_cartesian(xlim = c(0, 240)) +
+  scale_x_continuous(limits = c(0, 240), breaks = seq(0, 240, 24)) +
+  scale_y_continuous(labels = percent, breaks = seq(0, 1, 0.2)) +
+  buffer_theme() +
+  labs(x = "Number of Hours Between Created and Sent Dates", y = NULL,
+       title = "Number of Hours Scheduled in Advance",
+       subtitle = "Number of Hours For Which 75% of Posts Are Scheduled In Advance",
+       color = "Target Customer")
+```
+
+The number of profiles that paying customers have doesn't make much of a difference when we look at the number of hours that elapse between an update being created and sent.

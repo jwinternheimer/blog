@@ -57,7 +57,7 @@
 
   <article class="article">
     
-    <span class="article-duration">4 min read</span>
+    <span class="article-duration">5 min read</span>
     
 
     <h1 class="article-title">How Far in Advance Users Schedule Posts</h1>
@@ -74,9 +74,9 @@
 <p>To do this we will compute some summary statistics for a sample of users that have scheduled posts in the past six months. Then, we will summarise those summary statistics to try to understand the overall population of users.</p>
 <div id="summary" class="section level2">
 <h2>Summary</h2>
-<p>Almost all users scheduled most (at least 75%) of their updates to be sent within 10 days. Around 53% of users schedule most of their posts to be sent within 24 hours. This means that around 47% of users scheduled most of their posts to be sent more than 24 hours later.</p>
-<p>Around 67% of users scheduled most of their posts to be sent within 48 hours, which implies that a third of users scheduled most of their posts to be sent more than 48 hours later.</p>
-<p>Around 94% of users scheduled most of their posts to be sent within the week, which implies that around 6% of users scheduled most of their posts to be sent more than one week later.</p>
+<p>Almost all users scheduled most (at least 75%) of their updates to be sent within 10 days. Around 53% of users schedule most of their posts to be sent within 24 hours. This means that around 47% of <em>all</em> users scheduled most of their posts to be sent more than 24 hours later.</p>
+<p>The distribution looks much different for paying customers. Around half of paying customers schedule most of their posts 2 or more days into the future. Around 38% of paying customers schedule most of their posts 3 or more days into the future, and 10% of paying customers schedule most of their posts at least 1 week in advance.</p>
+<p>The number of profiles that a customer has seems to make little difference on the amount of time that posts are scheduled in advance.</p>
 </div>
 <div id="data-collection" class="section level2">
 <h2>Data Collection</h2>
@@ -89,15 +89,18 @@
   , up.sent_at
   , datediff(hour, up.created_at, up.sent_at) as hours_to_send
   , up.profile_service
+  , pf.number_of_active_profiles
 from dbt.updates as up
 inner join dbt.users as u
   on up.user_id = u.id
+inner join dbt.user_profile_facts as pf
+  on pf.user_id = u.id
 where up.created_at &gt; current_date - 180
 and up.was_sent_with_buffer
 and up.created_at &lt; current_date - 60
 order by random()
 limit 1000000</code></pre>
-<p>We have around 918 thousand updates created in the past six months.</p>
+<p>We have around 920 thousand updates created in the past six months.</p>
 </div>
 <div id="exploratory-plots" class="section level2">
 <h2>Exploratory Plots</h2>
@@ -107,7 +110,8 @@ limit 1000000</code></pre>
 <p>We’ll use the 75th percentile for the <code>hours_to_send</code> metric all users that have scheduled at least 4 updates. This will tell us, for each user, the number of hours for which 75% of their posts were scheduled in advance.</p>
 <pre class="r"><code># calculate 75% quantile
 by_user &lt;- updates %&gt;% 
-  group_by(user_id) %&gt;% 
+  mutate(is_paying = plan != &quot;individual&quot;) %&gt;% 
+  group_by(user_id, is_paying, number_of_active_profiles) %&gt;% 
   summarise(updates = n_distinct(update_id),
             percentile = quantile(hours_to_send, probs = 0.75)[[1]]) %&gt;% 
   filter(updates &gt;= 4)</code></pre>
@@ -118,6 +122,13 @@ by_user &lt;- updates %&gt;%
 <p>The CDF shows us that almost all users schedule most of their updates to be sent within 10 days. Around 53% of users schedule most of their posts to be sent within 24 hours. This means that around 47% of users scheduled most of their posts to be sent more than 24 hours later.</p>
 <p>Around 67% of users scheduled most of their posts to be sent within 48 hours, which implies that a third of users scheduled most of their posts to be sent more than 48 hours later.</p>
 <p>Around 94% of users scheduled most of their posts to be sent within the week, which implies that around 6% of users scheduled most of their posts to be sent more than one week later.</p>
+<p>What if we now separated paying users from free users?</p>
+<p><img src="/post/2018-12-03-how-far-in-advance-users-schedule-posts_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+<p>We can see here that the distribution looks much different for paying customers. Around half of paying customers schedule most of their posts 2 or more days into the future. Around 38% of paying customers schedule most of their posts 3 or more days into the future, and 10% of paying customers schedule most of their posts at least 1 week in advance.</p>
+<p><img src="/post/2018-12-03-how-far-in-advance-users-schedule-posts_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p>This plot illustrates that paying customers schedule posts in a different way. Less users are scheduling most of their posts “just in time”. Now let’s zero in a bit and look at customers that are more like our target customers – let’s see what the distribution of <code>hours_to_send</code> looks like for paying customers with less than 5 profiles.</p>
+<p><img src="/post/2018-12-03-how-far-in-advance-users-schedule-posts_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p>The number of profiles that paying customers have doesn’t make much of a difference when we look at the number of hours that elapse between an update being created and sent.</p>
 </div>
 
     </div>
