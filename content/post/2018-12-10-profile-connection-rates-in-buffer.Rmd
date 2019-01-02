@@ -1,20 +1,24 @@
 ---
 title: Profile Connection Rates in Buffer
 author: ''
-date: '2018-12-10'
+date: '2019-01-02'
 slug: profile-connection-rates-in-buffer
 categories: []
 tags: []
 ---
 
-In this analysis we will try to estimate how successful New Publish users are in connecting social accounts. We will define and calculate a measure of success for each social network, and look at how this success rate changes over time.
+In this post we will estimate how successful New Publish users are in connecting social accounts. We will define and calculate a measure of success for each social network, and look at how this success rate changes over time.
 
 We define a connection "attempt" as the event that occurs when a user selects a profile type after clicking the "Add a New Social Account" button in Org Admin. **_An attempt is considered successful if a profile of the same social is created for that user within 30 minutes of the connection attempt event_**.
 
-For the sake of simplicity, we excluded Google+ and Pinterest profiles from this analysis. 
+![](/post/2018-12-10-profile-connection-rates-in-buffer_files/Screen Shot 2019-01-02 at 10.05.28 AM.png){width=100%}
+
+For the sake of simplicity, I've excluded Google+ and Pinterest profiles from this analysis. 
 
 ## Summary
-Linkedin profiles have the highest connection success rate at around 80%, followed by Twitter profiles (75%), Facebook pages (71%), and finally Instagram profiles (54%). The success rate of these connection attempts are consistent over time.
+Linkedin profiles have the highest connection success rate at around 80%, followed by Twitter profiles (75%), Facebook pages (71%), and finally Instagram profiles (52%). 
+
+The connection success rate of Linkedin profiles seems to be improving significantly over time, while the connection success rate of Instagram profiles seems to have decreased significantly in recent weeks.
 
 ## Data Collection
 We'll use the SQL query below to collect the data from Redshift. We'll only look at users that signed up on or after October 1, a somewhat arbitrary date. 
@@ -28,19 +32,6 @@ library(dplyr)
 library(ggplot2) 
 library(scales)
 library(lubridate)
-
-# buffer ggplot theme
-buffer_theme <- function() {
-  theme_minimal(base_family = "Roboto Condensed") +
-    theme(plot.title = element_text(size = rel(1.5), face = "bold"),
-          plot.subtitle = element_text(size = rel(1.1)),
-          plot.caption = element_text(color = "#777777", vjust = 0),
-          axis.title = element_text(size = rel(.9), hjust = 0.95, face = "italic"),
-          panel.grid.major = element_line(size = rel(.1), color = "#000000"),
-          panel.grid.minor = element_line(size = rel(.05), color = "#000000"),
-          plot.background = element_rect(fill = '#F5F5F5', color = '#F5F5F5'),
-          panel.background = element_rect(fill = '#F5F5F5', color = '#F5F5F5'))
-}
 ```
 
 ```{r eval = FALSE, include = FALSE}
@@ -50,7 +41,7 @@ con <- redshift_connect()
 
 ```{sql eval = FALSE}
 select 
-  date_trunc('week', date(u.created_at)) as signup_week
+  date_trunc('week', date(a.created_at)) as attempt_week
   , scope4 as network
   , count(distinct a.user_id) as users_attempted_connection
   , count(distinct p.user_id) as users_connected_profile
@@ -79,7 +70,6 @@ users$users_connected_profile <- as.integer(users$users_connected_profile)
 
 # replace experiment group names
 users <- users %>% 
-  filter(network != "Google+" & network != "Pinterest" & !is.na(network)) %>% 
   mutate(rate = users_connected_profile / users_attempted_connection)
 ```
 
@@ -92,11 +82,12 @@ users <- readRDS('profile_connection_rates.rds')
 ```
 
 ## Exploratory Analysis
-Now let's calculate the overall success rates for each social network. We do this by dividing the number of users that were able to successfully connect profiles for each network by the number of users that attempted to connect profiles from each network. 
+Let's calculate the overall success rates for each social network. We do this by dividing the number of users that were able to successfully connect profiles for each network by the number of users that attempted to connect profiles from each network. 
 
 ```{r echo = FALSE}
 # plot weekly connection rates
 users %>% 
+  filter(network != "Google+" & network != "Pinterest" & !is.na(network)) %>% 
   group_by(network) %>% 
   summarise(attempted = sum(users_attempted_connection), connected = sum(users_connected_profile)) %>% 
   mutate(rate = connected / attempted) %>% 
@@ -112,18 +103,23 @@ users %>%
        subtitle = "Linkedin profiles have highest success rate, Instagram have the lowest.")
 ```
 
-Linkedin profiles have the highest connection success rate at around 80%, followed by Twitter profiles (75%), Facebook pages (71%), and finally Instagram profiles (54%). Instagram profiles have the lowest connection success rate by a wide margin.
+Linkedin profiles have the highest connection success rate at around 80%, followed by Twitter profiles (74%), Facebook pages (71%), and finally Instagram profiles (52%). Instagram profiles have the lowest connection success rate by a wide margin.
 
 We can also view how these connection rates have changed over time.
 
 ```{r echo = FALSE}
 # plot weekly connection rates
-ggplot(users, aes(x = signup_week, y = rate, color = network)) +
+users %>% 
+  filter(network != "Google+" & network != "Pinterest" & !is.na(network)) %>% 
+  ggplot(aes(x = attempt_week, y = rate, color = network)) +
   geom_line(size = 1) +
+  geom_point(size = 2) +
   buffer_theme() +
   scale_y_continuous(labels = percent) +
   labs(x = NULL, y = NULL, color = "Network", title = "Profile Connection Success Rate",
-       subtitle = "Linkedin profiles have highest success rate, Instagram have the lowest.")
+       subtitle = "New Publish Users")
 ```
 
-We can see here that the connection success rates are fairly consistent over time. Linkedin is consistently the highest and Instagram is consistently the lowest. 
+We can see here that the connection success rates are fairly consistent over time. Linkedin is consistently the highest and Instagram is consistently the lowest. Interestingly, the connection success rate of Linkedin profiles seems to be improving significantly over time, while the connection success rate of Instagram profiles seems to have decreased significantly in recent weeks.
+
+
