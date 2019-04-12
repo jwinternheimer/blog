@@ -49,3 +49,90 @@ users &lt;- users %&gt;%
 <p><img src="/post/2018-12-04-who-are-buffer-s-target-customers_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
 <p>It seems that digital brands churned at the highest rate, followed by agencies, publishers, and offline brands, which churned at the lowest rate.</p>
 </div>
+<div id="online-first-consumer-brands-january-update" class="section level2">
+<h2>Online First Consumer Brands (January Update)</h2>
+<p>In December we ran a product market fit survey to 50% of all Buffer users. The results of that survey were collected in <a href="https://docs.google.com/spreadsheets/d/16wOiRP_oUjgmpAqFtsI7rUKKhcqr7GWhGHpsa4Rzr3A/edit#gid=1589765494">this spreadsheet</a>. We’ll download the results as CSVs and import them to our R session.</p>
+<pre class="r"><code>library(readr)
+
+# read data as csv and add column
+free &lt;- read_csv(&quot;~/Downloads/pm_fit_free.csv&quot;, col_names = FALSE) %&gt;% mutate(plan = &quot;free&quot;)
+pro &lt;- read_csv(&quot;~/Downloads/pm_fit_pro.csv&quot;, col_names = FALSE) %&gt;% mutate(plan = &quot;pro&quot;)
+biz &lt;- read_csv(&quot;~/Downloads/pm_fit_business.csv&quot;, col_names = FALSE) %&gt;% mutate(plan = &quot;business&quot;)
+
+# combine dataframes
+results &lt;- free %&gt;% 
+  bind_rows(pro) %&gt;% 
+  bind_rows(biz) %&gt;% 
+  mutate(target_customer = X19 == &quot;Sell our products/services directly to consumers&quot; &amp;
+           X20 == &quot;Online store&quot;)
+
+# remove unneeded data rames
+rm(free)
+rm(pro)
+rm(biz)</code></pre>
+<p>Now let’s extract the profile id from each response.</p>
+<pre class="r"><code># extract profile id
+results &lt;- results %&gt;% 
+  mutate(profile_id = str_extract(X5, &quot;/profile/(.+?)/&quot;),
+         profile_id = gsub(&quot;/&quot;, &quot;&quot;, profile_id),
+         profile_id = gsub(&quot;profile&quot;, &quot;&quot;, profile_id))</code></pre>
+<p>Now we can gather the user ids from the profile ids.</p>
+<pre class="r"><code># connect to redshift
+con &lt;- redshift_connect()
+
+# get distinct profile ids
+profile_ids &lt;- results %&gt;% 
+  group_by(profile_id) %&gt;% 
+  summarise(n = n()) %&gt;% 
+  ungroup()
+ 
+# get user ids from users dataframe
+profile_ids &lt;- build_sql(profile_ids$profile_id)
+
+# sql query
+query &lt;- &quot;
+
+  select
+    p.id as profile_id
+    , p.user_id as user_id
+    , u.billing_plan_name as plan_name
+    , p.service as service
+    , pf.number_of_active_profiles
+    , tf.number_of_team_members
+  from dbt.profiles as p
+  inner join dbt.users as u
+    on p.user_id = u.id
+  left join dbt.user_profile_facts as pf
+    on p.user_id = pf.user_id
+  left join dbt.user_team_member_facts as tf
+    on p.user_id = tf.user_id
+  where p.id in profile_id_list
+  group by 1,2,3,4,5,6
+
+&quot;
+
+# final query
+final_query &lt;- gsub(&quot;profile_id_list&quot;, profile_ids, sprintf(query))
+  
+# query redshift
+users &lt;- query_db(final_query, con)
+
+# set counts as ints
+users$number_of_active_profiles &lt;- as.integer(users$number_of_active_profiles)
+users$number_of_team_members &lt;- as.integer(users$number_of_team_members)
+
+# join it back into the results
+user_results &lt;- results %&gt;% 
+  inner_join(users, by = &quot;profile_id&quot;)</code></pre>
+<p>Now let’s plot the distribution of the number of profiles that target customers have.</p>
+<p><img src="/post/2018-12-04-who-are-buffer-s-target-customers_files/figure-html/unnamed-chunk-18-1.png" width="672" /></p>
+<pre class="r"><code>results %&gt;% 
+  filter(plan_name == &quot;small&quot; &amp; number_of_active_profiles &gt; 25) %&gt;% 
+  select(user_id, plan_name, number_of_active_profiles)</code></pre>
+<pre><code>## # A tibble: 3 x 3
+##   user_id                  plan_name number_of_active_profiles
+##   &lt;chr&gt;                    &lt;chr&gt;                         &lt;int&gt;
+## 1 5891c9fb64ec34003383a948 small                            26
+## 2 5af9adfc4eca0296710bf745 small                            26
+## 3 58dacfb4c31add0e04dcd685 small                            27</code></pre>
+</div>

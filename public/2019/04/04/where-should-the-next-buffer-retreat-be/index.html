@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Hugo 0.51" />
+
+
+<title>Where should the next Buffer retreat be? - A Data Blog</title>
+<meta property="og:title" content="Where should the next Buffer retreat be? - A Data Blog">
+
+
+
+  
+
+
+
+
+
+
+
+
+<link href='//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css' rel='stylesheet' type='text/css' />
+
+
+
+<link rel="stylesheet" href="/css/fonts.css" media="all">
+<link rel="stylesheet" href="/css/main.css" media="all">
+
+
+
+  </head>
+  <body>
+    <div class="wrapper">
+      <header class="header">
+        <nav class="nav">
+  <a href="/" class="nav-logo">
+    <img src="/images/dilbert.png"
+         width="50"
+         height="50"
+         alt="Logo">
+  </a>
+
+  <ul class="nav-links">
+    
+    <li><a href="https://github.com/jwinternheimer">GitHub</a></li>
+    
+    <li><a href="https://twitter.com/julheimer">Twitter</a></li>
+    
+  </ul>
+</nav>
+
+      </header>
+
+
+<main class="content" role="main">
+
+  <article class="article">
+    
+    <span class="article-duration">5 min read</span>
+    
+
+    <h1 class="article-title">Where should the next Buffer retreat be?</h1>
+
+    
+    <span class="article-date">2019/04/04</span>
+    
+
+    <div class="article-content">
+      
+<script src="/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/rmarkdown-libs/jquery/jquery.min.js"></script>
+<link href="/rmarkdown-libs/datatables-css/datatables-crosstalk.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/datatables-binding/datatables.js"></script>
+<link href="/rmarkdown-libs/dt-core/css/jquery.dataTables.min.css" rel="stylesheet" />
+<link href="/rmarkdown-libs/dt-core/css/jquery.dataTables.extra.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/dt-core/js/jquery.dataTables.min.js"></script>
+<link href="/rmarkdown-libs/crosstalk/css/crosstalk.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/crosstalk/js/crosstalk.min.js"></script>
+<link href="/rmarkdown-libs/leaflet/leaflet.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/leaflet/leaflet.js"></script>
+<link href="/rmarkdown-libs/leafletfix/leafletfix.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/Proj4Leaflet/proj4-compressed.js"></script>
+<script src="/rmarkdown-libs/Proj4Leaflet/proj4leaflet.js"></script>
+<link href="/rmarkdown-libs/rstudio_leaflet/rstudio_leaflet.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/leaflet-binding/leaflet.js"></script>
+
+
+<p>Buffer is a fully remote and distributed team with over 80 team members based around the world. Once a year, we all gather for a company retreat. This year, the retreat is in San Diego. After seeing <a href="https://livefreeordichotomize.com/2018/06/27/bringing-the-family-together-finding-the-center-of-geographic-points-in-r/">this great blog post</a>, I thought it would be fun to identify the geographic midpoint of all of Buffer’s team members.</p>
+<pre class="r"><code># load packages 
+library(tidyverse)
+library(leaflet)
+library(opencage)
+library(geosphere)
+library(RColorBrewer)</code></pre>
+<div id="locating-team-members" class="section level2">
+<h2>Locating Team Members</h2>
+<p>The location of every team member can be found in <a href="https://docs.google.com/spreadsheets/d/11s9VSyf4yaYUsqBKLaVH78NL8wdl8gXoj5BGAzjIFuc/edit#gid=671465451">our transparent salary spreadsheet</a>. We’ll import the locations from a CSV.</p>
+<pre class="r"><code># read data from csv
+locations &lt;- read.csv(&quot;~/Downloads/locations.csv&quot;, header = TRUE, stringsAsFactors = FALSE)</code></pre>
+<p>This is what the data looks like.</p>
+<div id="htmlwidget-1" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","55","56","57","58","59","60","61","62","63","64","65","66","67","68","69","70","71","72","73","74","75","76","77","78","79","80","81","82","83","84","85","86"],["Joel","Nicole","Jenny","Stephanie","Courtney","Caryn","Kyle","Mandy","Keisha","Alfred","Arielle","Ash","Bonnie","Brian","Hailley","Kevan","Mike E","Spencer","Adnan","Andy","Boris","Colin","Dan","Eric","Federico","Hamish","Harrison","Ivana","Joe","Jordan","José","Katie","Marcus W","Mike S","Phil","Steven","Tigran","Kara","Victoria","Gisete","Joan","Ana","Lola","Eduardo","Maya","Amy Lee","Karel","Colleen","Sol","Juliana","Caro","Roy","Super","Tom R","Tom D","James","Dave O","Tyler","Ann","Julia J","David G","Julian","Matt","Michael","Adam","Åsa","Daniel F","Daniel S","Danny","Darcy","Dave C","Hannah","Heather-Mae","Jess","Julia","Juliet","Karinna","Katie G","Kelly","Mick","Nate","Octa","Ross","Todd","Jamal","Essence"],["Boulder, CO, USA","Portland, OR, USA","Louisville, KY, USA","Singapore, Singapore","Nashville, TN, USA","San Luis Obispo, CA, USA","Jacksonville, FL, USA","Nashville, TN, USA","Farmington Hills, MI, USA","Singapore, Singapore","Philadelphia, PA, USA","Bury St Edmunds, UK","Nashville, TN, USA","Denver, CO, USA","Colorado Springs, CO, USA","Boise, ID, USA","Sydney, Australia","Aliso Viejo, CA, USA","Colombo, Sri Lanka","San Francisco, CA, USA","Montpellier, France","Cambridge, UK","New York, NY, USA","Beijing, China","Oakland, CA, USA","Vancouver, Canada","Chicago, IL, USA","Zadar, Croatia","Brighton, UK","Ozark, MO, USA","Madrid, Spain","Vancouver, Canada","Padova, Italy","Barcelona, Spain","Montpellier, France","San Francisco, CA, USA","New York, NY, USA","Vancouver, Canada","Chicago, IL, USA","Seattle, WA, USA","Boulder, CO, USA","Porto, Portugal","London, UK","Maastricht, Netherlands","Barcelona, Spain","Nashville, TN, USA","Staines, UK","Des Moines, IA, USA","Buenos Aires, Argentina","Medillín, Colombia","Portland, OR, USA","Saint Catharines, Canada","Columbus, OH, USA","Toronto, Canada","Cambridge, UK","Winchester, UK","Southowram, UK","Bellingham, WA, USA","Victoria, Canada","Wroclaw, Poland","Granada, Spain","Louisville, KY, USA","Nomad","Santa Cruz, CA, USA","Detroit, MI, USA","London, UK","San Francisco, CA, USA","Vancouver, Canada","London, UK","Fort Collins, CO","London, UK","Brighton, UK","Seattle, WA, USA","Kalispell, MT, USA","New York, NY, USA","London, UK","Irvine, CA, USA","Woodside, CA, USA","Philadelphia, PA, USA","Dublin, Ireland","Portland, OR, USA","Nomad","Louisville, KY, USA","Louisville, KY, USA","Denver, CO, USA","Chicago, IL, USA"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>name<\/th>\n      <th>location<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"order":[],"autoWidth":false,"orderClasses":false,"columnDefs":[{"orderable":false,"targets":0}]}},"evals":[],"jsHooks":[]}</script>
+<p>To get the longitude and latitude for each location, we’ll use the<code>opencage</code> package. The <code>open_forward()</code> function will give multiple results for each call, along with a confidence score for each. We can sort by the confidence score and take the top result.</p>
+<pre class="r"><code># function to get most likely latitude and longitude
+geocode_locations &lt;- function(location) {
+  
+  opencage_forward(location)$results %&gt;%
+    arrange(desc(confidence)) %&gt;%
+    select(city = query, lat = geometry.lat, lon = geometry.lng) %&gt;%
+    slice(1)
+}</code></pre>
+<pre class="r"><code># group by city 
+by_city &lt;- locations %&gt;% 
+  group_by(location) %&gt;% 
+  summarise(number = n())
+
+# map locations
+geocodes &lt;- map_df(by_city$location, geocode_locations)
+
+# join to original data frame
+by_city &lt;- by_city %&gt;% 
+  inner_join(geocodes, by = c(&quot;location&quot; = &quot;city&quot;)) %&gt;% 
+  filter(location != &quot;Nomad&quot;)
+
+# join to locations data frame too
+locations &lt;- locations %&gt;% 
+  inner_join(geocodes, by = c(&quot;location&quot; = &quot;city&quot;)) %&gt;% 
+  filter(location != &quot;Nomad&quot;)</code></pre>
+<p>Now we can plot all of the locations.</p>
+<div id="htmlwidget-2" style="width:672px;height:480px;" class="leaflet html-widget"></div>
+<script type="application/json" data-for="htmlwidget-2">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addTiles","args":["//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",null,null,{"minZoom":0,"maxZoom":18,"tileSize":256,"subdomains":"abc","errorTileUrl":"","tms":false,"noWrap":false,"zoomOffset":0,"zoomReverse":false,"opacity":1,"zIndex":1,"detectRetina":false,"attribution":"&copy; <a href=\"http://openstreetmap.org\">OpenStreetMap<\/a> contributors, <a href=\"http://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA<\/a>"}]},{"method":"addCircleMarkers","args":[[39.9715781,40.4344895,38.2542376,1.2904753,36.1622296,35.2753801,30.3653453,36.1622296,42.4853125,1.2904753,40.1312688,52.2536353,36.1622296,38.67294,38.8493435,43.61656,-33.8679574,33.5761376,6.929107,37.7791185,47.3746883,52.194144,40.7642499,39.9016416,41.8236535,49.2608724,41.8966529,44.113446,50.829648,38.5365686,35.2877782,49.2608724,45.5801323,41.4008279,47.3746883,37.7791185,40.7642499,49.2608724,41.8966529,47.4112602,39.9715781,42.0218328,51.5425633,50.8501783,41.4008279,36.1622296,51.4323328,41.5888868,-42.9165061,4,40.4344895,43.1479209,39.9622601,43.6524203,52.194144,51.0672575,53.7091732,48.7206203,48.9615025,51.1126536,37.183748,38.2542376,33.6224964,42.101648,51.5425633,37.7791185,49.2608724,51.5425633,40.5508527,51.5425633,50.829648,47.4112602,48.2022563,40.7642499,51.5425633,33.8089479,34.2962255,40.1312688,53.4500694,40.4344895,38.2542376,38.2542376,38.67294,41.8966529],[-105.0926693,-84.9777455,-85.759407,103.8520359,-86.7743531,-120.655122,-81.7241474,-86.7743531,-83.3771553,103.8520359,-74.9675194,0.7125888,-86.7743531,-104.702767,-104.6681121,-116.200835,151.210047,-117.7258122,79.8444934,-122.4138641,-0.8451945,0.1375027,-73.954525,116.4209908,-87.6082424,-123.1139529,-87.6281533,15.2248793,-0.14097,-90.652728,-2.9525914,-123.1139529,8.8945004,2.2085836,-0.8451945,-122.4138641,-73.954525,-123.1139529,-87.6281533,-122.260923,-105.0926693,-8.4518185,0.0009631,5.7052501,2.2085836,-86.7743531,-0.5031569,-93.5700912,-71.3363881,-73.25,-84.9777455,-79.2569907,-83.0007065,-79.3834045,0.1375027,-1.3200333,-1.8311406,-122.5111721,-125.4335327,17.0191245,-3.6085992,-85.759407,-117.6940716,-84.247869,0.0009631,-122.4138641,-123.1139529,0.0009631,-105.0668085,0.0009631,-0.14097,-122.260923,-114.3167117,-73.954525,0.0009631,-116.6589389,-119.1687891,-74.9675194,-6.2308502,-84.9777455,-85.759407,-85.759407,-104.702767,-87.6281533],6,null,null,{"interactive":true,"className":"","stroke":true,"color":["#C70E7B","#DF367E","#F75F81","#DC9352","#B5CA17","#80D42F","#40C17F","#29A8AB","#4E86A3","#646598","#3D4680","#172869"],"weight":5,"opacity":0.5,"fill":true,"fillColor":["#C70E7B","#DF367E","#F75F81","#DC9352","#B5CA17","#80D42F","#40C17F","#29A8AB","#4E86A3","#646598","#3D4680","#172869"],"fillOpacity":0.2},null,null,null,null,["Joel","Nicole","Jenny","Stephanie","Courtney","Caryn","Kyle","Mandy","Keisha","Alfred","Arielle","Ash","Bonnie","Brian","Hailley","Kevan","Mike E","Spencer","Adnan","Andy","Boris","Colin","Dan","Eric","Federico","Hamish","Harrison","Ivana","Joe","Jordan","José","Katie","Marcus W","Mike S","Phil","Steven","Tigran","Kara","Victoria","Gisete","Joan","Ana","Lola","Eduardo","Maya","Amy Lee","Karel","Colleen","Sol","Juliana","Caro","Roy","Super","Tom R","Tom D","James","Dave O","Tyler","Ann","Julia J","David G","Julian","Michael","Adam","Åsa","Daniel F","Daniel S","Danny","Darcy","Dave C","Hannah","Heather-Mae","Jess","Julia","Juliet","Karinna","Katie G","Kelly","Mick","Nate","Ross","Todd","Jamal","Essence"],{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null]}],"limits":{"lat":[-42.9165061,53.7091732],"lng":[-125.4335327,151.210047]}},"evals":[],"jsHooks":[]}</script>
+</div>
+<div id="geographic-average" class="section level2">
+<h2>Geographic Average</h2>
+<p>The easiest way is to find the geographic center is to average all of the longitude points and average all of the latitude points. This can be weighted by the number of people at each point by taking a weighted mean.</p>
+<pre class="r"><code># average latitude and longitude
+geographic_average &lt;- function(lon, lat, weight = NULL) {
+  
+  if (is.null(weight)) {
+    weight &lt;- rep(1, length(lon))
+  }
+  
+  lon &lt;- weighted.mean(lon, w = weight)
+  lat &lt;- weighted.mean(lat, w = weight)
+  data.frame(lon = lon, lat = lat)
+}</code></pre>
+</div>
+<div id="geographic-midpoint" class="section level2">
+<h2>Geographic Midpoint</h2>
+<p>A bit of a more complex version uses vector algebra – first converting the points to radians, then sticking them on a Cartesian plane. This method is well explained on <a href="http://mathforum.org/library/drmath/view/68373.html">Ask Dr. Math</a>.</p>
+<pre class="r"><code># function to find geographic midpoint
+geographic_midpoint &lt;- function(lon, lat, weight = NULL) {
+  
+  if (is.null(weight)) {
+    weight &lt;- rep(1, length(lon))
+  }
+  
+  # degrees to radians
+  lat &lt;- lat * pi / 180
+  lon &lt;- lon * pi / 180
+  
+  # cartesian coordinates
+  x &lt;- cos(lat) * cos(lon)
+  y &lt;- cos(lat) * sin(lon)
+  z &lt;- sin(lat)
+  
+  # weighted mean
+  x &lt;- weighted.mean(x, w = weight)
+  y &lt;- weighted.mean(y, w = weight)
+  z &lt;- weighted.mean(z, w = weight)
+  
+  # convert to lat and lon
+  lon &lt;- atan2(y, x) * 180 / pi
+  hyp &lt;- sqrt(x * x + y * y)
+  lat &lt;- atan2(z, hyp) * 180 / pi
+  
+  data.frame(lon = lon, lat = lat)
+}</code></pre>
+<p>Let’s calculate these points and map them out.</p>
+<pre class="r"><code>df &lt;- by_city %&gt;% 
+  filter(location != &quot;Nomad&quot;)
+
+center &lt;- list(
+  &quot;Unweighted Average&quot; = geographic_average(
+    lon = df$lon,
+    lat = df$lat),
+  &quot;Weighted Average&quot; = geographic_average(
+    lon = df$lon,
+    lat = df$lat,
+    weight = df$number),
+  &quot;Unweighted Midpoint&quot; = geographic_midpoint(
+    lon = df$lon,
+    lat = df$lat),
+  &quot;Weighted Midpoint&quot; = geographic_midpoint(
+    lon = df$lon, 
+    lat = df$lat,
+    weight = df$number)
+)
+
+center &lt;- bind_rows(center, .id = &quot;calculation&quot;)</code></pre>
+<div id="htmlwidget-3" style="width:672px;height:480px;" class="leaflet html-widget"></div>
+<script type="application/json" data-for="htmlwidget-3">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addTiles","args":["//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",null,null,{"minZoom":0,"maxZoom":18,"tileSize":256,"subdomains":"abc","errorTileUrl":"","tms":false,"noWrap":false,"zoomOffset":0,"zoomReverse":false,"opacity":1,"zIndex":1,"detectRetina":false,"attribution":"&copy; <a href=\"http://openstreetmap.org\">OpenStreetMap<\/a> contributors, <a href=\"http://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA<\/a>"}]},{"method":"addCircleMarkers","args":[[37.7893352888889,39.2720503547619,56.2302659884054,55.3796962412088],[-51.5519796962963,-56.0774605595238,-71.8910020599749,-73.7386378112832],8,null,null,{"interactive":true,"className":"","stroke":true,"color":"#03F","weight":5,"opacity":0.5,"fill":true,"fillColor":"#03F","fillOpacity":0.2},null,null,null,null,["Unweighted Average","Weighted Average","Unweighted Midpoint","Weighted Midpoint"],{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null]}],"limits":{"lat":[37.7893352888889,56.2302659884054],"lng":[-73.7386378112832,-51.5519796962963]}},"evals":[],"jsHooks":[]}</script>
+<p>We can see that the weighted and unweighted geographic midpoints lie in Northeastern middle-of-nowhere Canada, and the weighted and unweighted averages lie in the Atlantic Ocean off the coast of the United States.</p>
+<p>We can calculate the difference in the total distance that the team needs to travel to get to this midpoint. First, let’s calculate the total distance traveled to get to San Diego.</p>
+<pre class="r"><code># set location
+locations$destination &lt;- &quot;San Diego, CA, USA&quot;
+
+# get destination coordinates
+dest_coords &lt;- geocode_locations(&quot;San Diego, CA, USA&quot;)
+target_coords &lt;- c(32.71725, -117.17)
+
+# set coordinates
+locations$lat2 &lt;- 32.71725
+locations$lon2 &lt;- -117.17
+
+locations$distance &lt;- distHaversine(locations[,4:3], locations[,7:6]) / 1000
+
+locations %&gt;% 
+  filter(location != &quot;Nomad&quot;) %&gt;% 
+  summarise(kms = sum(distance))</code></pre>
+<pre><code>##        kms
+## 1 425106.3</code></pre>
+<p>425 thousand kilometers! That’s around 10 times around the Earth! Let’s calculate the total distance to the weighted midpoint, which appears to be in the middle of nowhere.</p>
+<pre class="r"><code># set coordinates
+locations$lat2 &lt;- 55.37969
+locations$lon2 &lt;- -73.73865
+
+locations$distance &lt;- distHaversine(locations[,4:3], locations[,7:6]) / 1000
+
+locations %&gt;% 
+  filter(location != &quot;Nomad&quot;) %&gt;% 
+  summarise(kms = sum(distance))</code></pre>
+<pre><code>##      kms
+## 1 343620</code></pre>
+<p>The team would only have to travel 343 thousand kilometers to get to the geographic midpoint. That’s around 20% less kilometers traveled and only 8.5 times around the world. Let’s calculate the distance to the weighted average.</p>
+<pre class="r"><code># set coordinates
+locations$lat2 &lt;- 39.27205
+locations$lon2 &lt;- -56.07747
+
+locations$distance &lt;- distHaversine(locations[,4:3], locations[,7:6]) / 1000
+
+locations %&gt;% 
+  filter(location != &quot;Nomad&quot;) %&gt;% 
+  summarise(kms = sum(distance))</code></pre>
+<pre><code>##        kms
+## 1 388732.7</code></pre>
+<p>It would be around 398 thousand kilometers to the geographic average in the Atlantic Ocean.</p>
+</div>
+
+    </div>
+  </article>
+
+  
+
+
+</main>
+
+      <footer class="footer">
+        <ul class="footer-links">
+          <li>
+            <a href="/index.xml" type="application/rss+xml" target="_blank">RSS feed</a>
+          </li>
+          <li>
+            <a href="https://gohugo.io/" class="footer-links-kudos">Made with <img src="/images/hugo-logo.png" alt="Img link to Hugo website" width="22" height="22"></a>
+          </li>
+        </ul>
+      </footer>
+
+    </div>
+    
+
+
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+
+
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/r.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/yaml.min.js"></script>
+<script>hljs.configure({languages: []}); hljs.initHighlightingOnLoad();</script>
+
+
+
+    
+<script src="/js/math-code.js"></script>
+<script async src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+
+
+    
+  </body>
+</html>
+

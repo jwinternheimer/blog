@@ -6,10 +6,20 @@
     <description>Recent content on A Data Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 02 Jan 2019 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Thu, 04 Apr 2019 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Where should the next Buffer retreat be?</title>
+      <link>/2019/04/04/where-should-the-next-buffer-retreat-be/</link>
+      <pubDate>Thu, 04 Apr 2019 00:00:00 +0000</pubDate>
+      
+      <guid>/2019/04/04/where-should-the-next-buffer-retreat-be/</guid>
+      <description>Buffer is a fully remote and distributed team with over 80 team members based around the world. Once a year, we all gather for a company retreat. This year, the retreat is in San Diego. After seeing this great blog post, I thought it would be fun to identify the geographic midpoint of all of Buffer’s team members.
+# load packages library(tidyverse) library(leaflet) library(opencage) library(geosphere) library(RColorBrewer) Locating Team Members The location of every team member can be found in our transparent salary spreadsheet.</description>
+    </item>
     
     <item>
       <title>Profile Connection Rates in Buffer</title>

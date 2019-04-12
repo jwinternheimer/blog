@@ -25,22 +25,10 @@ We'll import the raw responses from [this spreadsheet](https://docs.google.com/s
 library(buffer)
 library(dplyr)
 library(tidyr)
+library(stringr)
 library(dbplyr)
 library(ggplot2)
 library(scales)
-
-# buffer ggplot theme
-buffer_theme <- function() {
-  theme_minimal(base_family = "Roboto Condensed") +
-    theme(plot.title = element_text(size = rel(1.5), face = "bold"),
-          plot.subtitle = element_text(size = rel(1.1)),
-          plot.caption = element_text(color = "#777777", vjust = 0),
-          axis.title = element_text(size = rel(.9), hjust = 0.95, face = "italic"),
-          panel.grid.major = element_line(size = rel(.1), color = "#000000"),
-          panel.grid.minor = element_line(size = rel(.05), color = "#000000"),
-          plot.background = element_rect(fill = '#F5F5F5', color = '#F5F5F5'),
-          panel.background = element_rect(fill = '#F5F5F5', color = '#F5F5F5'))
-}
 ```
 
 ```{r eval = FALSE}
@@ -231,3 +219,118 @@ users %>%
 ```
 
 It seems that digital brands churned at the highest rate, followed by agencies, publishers, and offline brands, which churned at the lowest rate.
+
+## Online First Consumer Brands (January Update)
+In December we ran a product market fit survey to 50% of all Buffer users. The results of that survey were collected in [this spreadsheet](https://docs.google.com/spreadsheets/d/16wOiRP_oUjgmpAqFtsI7rUKKhcqr7GWhGHpsa4Rzr3A/edit#gid=1589765494). We'll download the results as CSVs and import them to our R session.
+
+```{r warning = FALSE, message = FALSE, eval = FALSE}
+library(readr)
+
+# read data as csv and add column
+free <- read_csv("~/Downloads/pm_fit_free.csv", col_names = FALSE) %>% mutate(plan = "free")
+pro <- read_csv("~/Downloads/pm_fit_pro.csv", col_names = FALSE) %>% mutate(plan = "pro")
+biz <- read_csv("~/Downloads/pm_fit_business.csv", col_names = FALSE) %>% mutate(plan = "business")
+
+# combine dataframes
+results <- free %>% 
+  bind_rows(pro) %>% 
+  bind_rows(biz) %>% 
+  mutate(target_customer = X19 == "Sell our products/services directly to consumers" &
+           X20 == "Online store")
+
+# remove unneeded data rames
+rm(free)
+rm(pro)
+rm(biz)
+```
+
+Now let's extract the profile id from each response.
+
+```{r eval = FALSE}
+# extract profile id
+results <- results %>% 
+  mutate(profile_id = str_extract(X5, "/profile/(.+?)/"),
+         profile_id = gsub("/", "", profile_id),
+         profile_id = gsub("profile", "", profile_id))
+```
+
+Now we can gather the user ids from the profile ids. 
+
+```{r eval = FALSE}
+# connect to redshift
+con <- redshift_connect()
+
+# get distinct profile ids
+profile_ids <- results %>% 
+  group_by(profile_id) %>% 
+  summarise(n = n()) %>% 
+  ungroup()
+ 
+# get user ids from users dataframe
+profile_ids <- build_sql(profile_ids$profile_id)
+
+# sql query
+query <- "
+
+  select
+    p.id as profile_id
+    , p.user_id as user_id
+    , u.billing_plan_name as plan_name
+    , p.service as service
+    , pf.number_of_active_profiles
+    , tf.number_of_team_members
+  from dbt.profiles as p
+  inner join dbt.users as u
+    on p.user_id = u.id
+  left join dbt.user_profile_facts as pf
+    on p.user_id = pf.user_id
+  left join dbt.user_team_member_facts as tf
+    on p.user_id = tf.user_id
+  where p.id in profile_id_list
+  group by 1,2,3,4,5,6
+
+"
+
+# final query
+final_query <- gsub("profile_id_list", profile_ids, sprintf(query))
+  
+# query redshift
+users <- query_db(final_query, con)
+
+# set counts as ints
+users$number_of_active_profiles <- as.integer(users$number_of_active_profiles)
+users$number_of_team_members <- as.integer(users$number_of_team_members)
+
+# join it back into the results
+user_results <- results %>% 
+  inner_join(users, by = "profile_id")
+```
+
+```{r include = FALSE}
+# save results
+# saveRDS(user_results, file = "pm_survey_results.rds")
+
+# load data
+results <- readRDS("pm_survey_results.rds")
+```
+
+Now let's plot the distribution of the number of profiles that target customers have. 
+
+```{r echo = FALSE}
+# plot distribution of profiles
+results %>% 
+  filter(target_customer) %>% 
+  group_by(user_id, plan_name) %>% 
+  summarise(profiles = median(number_of_active_profiles, na.rm = TRUE)) %>% 
+  ggplot(aes(x = profiles, color = plan_name, fill = plan_name)) +
+  geom_histogram(binwidth = 1) +
+  buffer_theme() +
+  facet_wrap(~plan_name)
+```
+
+```{r}
+results %>% 
+  filter(plan_name == "small" & number_of_active_profiles > 25) %>% 
+  select(user_id, plan_name, number_of_active_profiles)
+```
+

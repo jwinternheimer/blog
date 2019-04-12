@@ -1,0 +1,78 @@
+---
+title: "How Long it Takes Users to Connect Profiles"
+output: html_notebook
+---
+
+```{r include = FALSE}
+# load libraries
+library(buffer)
+library(dplyr)
+library(ggplot2) 
+library(scales)
+library(lubridate)
+```
+
+```{r eval = FALSE, include = FALSE}
+# connect to redshift
+con <- redshift_connect()
+```
+
+```{sql connection = con, output.var = attempts}
+select 
+  a.created_at as attempt_at
+  , a.user_id
+  , a.id as attempt_id
+  , a.scope4 as network
+  , p.created_at as profile_connected_at
+  , p.id as profile_id
+from dbt.actions_taken as a
+left join dbt.profiles as p
+  on p.user_id = a.user_id
+  and p.service = lower(a.scope4)
+  and p.created_at >= a.created_at
+  and p.created_at <= dateadd(minute, 30, a.created_at)
+where a.full_scope like 'business organization_admin add_social_account_to_organization%'
+  and a.created_at >= '2018-10-01'
+```
+
+We only want to include the first profile associated with an `attempt_id`.
+
+```{r}
+# only include first profile
+first_attempt <- attempts %>% 
+  group_by(attempt_at, user_id, attempt_id, network) %>% 
+  summarise(profile_connected_at = min(profile_connected_at, na.rm = TRUE))
+
+# join the profile id
+connections <- first_attempt %>% 
+  inner_join(select(attempts, profile_connected_at, profile_id), by = "profile_connected_at") %>% 
+  mutate(time_to_connect = difftime(profile_connected_at, attempt_at, units = "mins"))
+```
+
+Now we can plot the amount of time it takes to connect certain profile types.
+
+```{r warning = FALSE, message = FALSE}
+# plot density of time to connect
+ggplot(connections, aes(x = time_to_connect, color = network, fill = network)) + 
+  geom_density() +
+  facet_wrap(~network) +
+  buffer_theme() +
+  theme(legend.position = "none") +
+  labs(x = "Minutes to Connect Profile", y = "Density", title = "Distribution of Time to Connect Profiles",
+       subtitle = "For profiles connected within 30 minutes of first attempt")
+```
+
+Let's plot the CDFs.
+
+```{r warning = FALSE, message = FALSE}
+# plot density of time to connect
+ggplot(connections, aes(x = time_to_connect, color = network)) + 
+  stat_ecdf() +
+  scale_y_continuous(breaks = seq(0, 1, 0.2), labels = percent) +
+  buffer_theme() +
+  labs(x = "Minutes to Connect Profile", y = "Percent of Attempts", color = "Network",
+       title = "Distribution of Time to Connect Profiles",
+       subtitles = "For profiles connected within 30 minutes of first attempt")
+```
+
+We can see that Instagram profiles take the longest, by far, to connect. Twitter and LinkedIn profiles are the quickest. Over 90% of profiles that are connected within 30 minutes have been connected within 20 minutes, so let's use that as our time window.

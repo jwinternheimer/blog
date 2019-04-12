@@ -1,0 +1,234 @@
+---
+title: Where should the next Buffer retreat be?
+author: ''
+date: '2019-04-04'
+slug: where-should-the-next-buffer-retreat-be
+categories: []
+tags: []
+---
+
+Buffer is a fully remote and distributed team with over 80 team members based around the world. Once a year, we all gather for a company retreat. This year, the retreat is in San Diego. After seeing [this great blog post](https://livefreeordichotomize.com/2018/06/27/bringing-the-family-together-finding-the-center-of-geographic-points-in-r/), I thought it would be fun to identify the geographic midpoint of all of Buffer's team members.
+
+```{r warning = FALSE, message = FALSE}
+# load packages 
+library(tidyverse)
+library(leaflet)
+library(opencage)
+library(geosphere)
+library(RColorBrewer)
+```
+
+## Locating Team Members
+The location of every team member can be found in [our transparent salary spreadsheet](https://docs.google.com/spreadsheets/d/11s9VSyf4yaYUsqBKLaVH78NL8wdl8gXoj5BGAzjIFuc/edit#gid=671465451). We'll import the locations from a CSV.
+
+```{r eval = FALSE}
+# read data from csv
+locations <- read.csv("~/Downloads/locations.csv", header = TRUE, stringsAsFactors = FALSE)
+```
+
+```{r include = FALSE}
+#saveRDS(locations, file = "team_locations.rds")
+
+locations <- readRDS("team_locations.rds")
+
+# fix Victoria BC
+locations$location <- gsub("Victoria, B.C.", "Victoria, Canada", locations$location)
+locations$location <- gsub("Pleasanton, CA, USA", "Oakland, CA, USA", locations$location)
+locations$location <- gsub("Singapore", "Singapore, Singapore", locations$location)
+```
+
+This is what the data looks like.
+
+```{r echo = FALSE}
+DT::datatable(locations)
+```
+
+To get the longitude and latitude for each location, we'll use the`opencage` package. The `open_forward()` function will give multiple results for each call, along with a confidence score for each. We can sort by the confidence score and take the top result.
+
+```{r}
+# function to get most likely latitude and longitude
+geocode_locations <- function(location) {
+  
+  opencage_forward(location)$results %>%
+    arrange(desc(confidence)) %>%
+    select(city = query, lat = geometry.lat, lon = geometry.lng) %>%
+    slice(1)
+}
+```
+
+```{r}
+# group by city 
+by_city <- locations %>% 
+  group_by(location) %>% 
+  summarise(number = n())
+
+# map locations
+geocodes <- map_df(by_city$location, geocode_locations)
+
+# join to original data frame
+by_city <- by_city %>% 
+  inner_join(geocodes, by = c("location" = "city")) %>% 
+  filter(location != "Nomad")
+
+# join to locations data frame too
+locations <- locations %>% 
+  inner_join(geocodes, by = c("location" = "city")) %>% 
+  filter(location != "Nomad")
+```
+
+Now we can plot all of the locations.
+
+```{r echo = FALSE}
+# color palette
+cols <- paletteer::paletteer_d("LaCroixColoR", 
+                    "PassionFruit", 
+                    n = 12, 
+                    type = "continuous")
+
+leaflet() %>%
+  addTiles() %>%  
+  addCircleMarkers(lng = locations$lon,
+                   lat = locations$lat,
+                   label = locations$name,
+                   color = cols,
+                   radius = 6)
+```
+
+## Geographic Average
+The easiest way is to find the geographic center is to average all of the longitude points and average all of the latitude points. This can be weighted by the number of people at each point by taking a weighted mean. 
+
+```{r}
+# average latitude and longitude
+geographic_average <- function(lon, lat, weight = NULL) {
+  
+  if (is.null(weight)) {
+    weight <- rep(1, length(lon))
+  }
+  
+  lon <- weighted.mean(lon, w = weight)
+  lat <- weighted.mean(lat, w = weight)
+  data.frame(lon = lon, lat = lat)
+}
+```
+
+## Geographic Midpoint
+A bit of a more complex version uses vector algebra – first converting the points to radians, then sticking them on a Cartesian plane. This method is well explained on [Ask Dr. Math](http://mathforum.org/library/drmath/view/68373.html).
+
+```{r}
+# function to find geographic midpoint
+geographic_midpoint <- function(lon, lat, weight = NULL) {
+  
+  if (is.null(weight)) {
+    weight <- rep(1, length(lon))
+  }
+  
+  # degrees to radians
+  lat <- lat * pi / 180
+  lon <- lon * pi / 180
+  
+  # cartesian coordinates
+  x <- cos(lat) * cos(lon)
+  y <- cos(lat) * sin(lon)
+  z <- sin(lat)
+  
+  # weighted mean
+  x <- weighted.mean(x, w = weight)
+  y <- weighted.mean(y, w = weight)
+  z <- weighted.mean(z, w = weight)
+  
+  # convert to lat and lon
+  lon <- atan2(y, x) * 180 / pi
+  hyp <- sqrt(x * x + y * y)
+  lat <- atan2(z, hyp) * 180 / pi
+  
+  data.frame(lon = lon, lat = lat)
+}
+```
+
+Let's calculate these points and map them out.
+
+```{r}
+df <- by_city %>% 
+  filter(location != "Nomad")
+
+center <- list(
+  "Unweighted Average" = geographic_average(
+    lon = df$lon,
+    lat = df$lat),
+  "Weighted Average" = geographic_average(
+    lon = df$lon,
+    lat = df$lat,
+    weight = df$number),
+  "Unweighted Midpoint" = geographic_midpoint(
+    lon = df$lon,
+    lat = df$lat),
+  "Weighted Midpoint" = geographic_midpoint(
+    lon = df$lon, 
+    lat = df$lat,
+    weight = df$number)
+)
+
+center <- bind_rows(center, .id = "calculation")
+```
+
+```{r echo = FALSE}
+leaflet() %>%
+  addTiles() %>%  
+  addCircleMarkers(lng = center$lon,
+                   lat = center$lat,
+                   label = center$calculation,
+                   radius = 8)
+```
+
+We can see that the weighted and unweighted geographic midpoints lie in Northeastern middle-of-nowhere Canada, and the weighted and unweighted averages lie in the Atlantic Ocean off the coast of the United States.
+
+We can calculate the difference in the total distance that the team needs to travel to get to this midpoint. First, let's calculate the total distance traveled to get to San Diego.
+
+```{r}
+# set location
+locations$destination <- "San Diego, CA, USA"
+
+# get destination coordinates
+dest_coords <- geocode_locations("San Diego, CA, USA")
+target_coords <- c(32.71725, -117.17)
+
+# set coordinates
+locations$lat2 <- 32.71725
+locations$lon2 <- -117.17
+
+locations$distance <- distHaversine(locations[,4:3], locations[,7:6]) / 1000
+
+locations %>% 
+  filter(location != "Nomad") %>% 
+  summarise(kms = sum(distance))
+```
+
+425 thousand kilometers! That's around 10 times around the Earth! Let's calculate the total distance to the weighted midpoint, which appears to be in the middle of nowhere.
+
+```{r}
+# set coordinates
+locations$lat2 <- 55.37969
+locations$lon2 <- -73.73865
+
+locations$distance <- distHaversine(locations[,4:3], locations[,7:6]) / 1000
+
+locations %>% 
+  filter(location != "Nomad") %>% 
+  summarise(kms = sum(distance))
+```
+
+The team would only have to travel 343 thousand kilometers to get to the geographic midpoint. That's around 20% less kilometers traveled and only 8.5 times around the world. Let's calculate the distance to the weighted average.
+
+```{r}
+# set coordinates
+locations$lat2 <- 39.27205
+locations$lon2 <- -56.07747
+
+locations$distance <- distHaversine(locations[,4:3], locations[,7:6]) / 1000
+
+locations %>% 
+  filter(location != "Nomad") %>% 
+  summarise(kms = sum(distance))
+```
+
+It would be around 398 thousand kilometers to the geographic average in the Atlantic Ocean.

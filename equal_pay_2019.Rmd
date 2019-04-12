@@ -1,0 +1,241 @@
+---
+title: "2019 Equal Pay Report"
+output: html_notebook
+---
+
+```{r warning = FALSE, message = FALSE}
+# load packages
+library(buffer)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(scales)
+```
+
+```{r eval = FALSE}
+# read data from csv
+salaries <- read.csv("~/Downloads/salaries19.csv", header = TRUE, stringsAsFactors = FALSE)
+```
+
+```{r}
+# save data
+# saveRDS(salaries, "2019_salaries.rds")
+
+# load data
+salaries <- readRDS("2019_salaries.rds")
+```
+
+## Gender Breakdown
+
+```{r}
+salaries %>% 
+  group_by(gender) %>% 
+  summarise(team_members = n(),
+            avg_salary = mean(total_comp),
+            med_salary = median(total_comp))
+```
+
+## Role Type 
+
+```{r}
+salaries %>% 
+  group_by(role_function, gender) %>% 
+  summarise(team_members = n(),
+            avg_salary = mean(total_comp),
+            med_salary = median(total_comp))
+```
+
+```{r}
+salaries %>% 
+  group_by(role_type, gender) %>% 
+  summarise(team_members = n(),
+            avg_salary = mean(total_comp),
+            med_salary = median(total_comp))
+```
+
+## Team
+
+```{r}
+salaries %>% 
+  group_by(team, gender) %>% 
+  summarise(team_members = n(),
+            avg_salary = mean(total_comp),
+            med_salary = median(total_comp))
+```
+
+## Hold Location Constant
+
+```{r}
+salaries %>% 
+  replace_na(list(salary_choice = 0, dep_grant = 0)) %>% 
+  mutate(comp_control_loc = sf_base + salary_choice + (dep_grant * 3000)) %>% 
+  group_by(role_function, gender) %>% 
+  summarise(avg = mean(comp_control_loc))
+```
+
+## Hold Location and Dep Grant Constant
+
+```{r}
+salaries %>% 
+  replace_na(list(salary_choice = 0, dep_grant = 0)) %>% 
+  mutate(control_comp = sf_base + salary_choice) %>% 
+  group_by(role_function, gender) %>% 
+  summarise(avg = mean(control_comp))
+```
+
+
+## SF Base Salary
+
+```{r}
+salaries %>% 
+  group_by(role_function, gender) %>% 
+  summarise(avg = mean(sf_base))
+```
+
+
+## Raises
+
+```{r}
+salaries %>% 
+  group_by(role_function, gender) %>% 
+  summarise(avg = mean(raise_amount, na.rm = TRUE))
+```
+
+
+## Raise Percent
+
+```{r}
+salaries %>% 
+  mutate(old_comp = total_comp - raise_amount) %>% 
+  group_by(role_function, gender) %>% 
+  summarise(old_comp = sum(old_comp, na.rm = TRUE),
+            total_raise = sum(raise_amount, na.rm = TRUE),
+            percent_raise = total_raise / old_comp)
+```
+
+
+## Raise Effect on Wage Gap
+
+```{r}
+salaries %>% 
+  mutate(old_base = location_base - raise_amount,
+         new_base = location_base) %>% 
+  group_by(gender) %>% 
+  summarise(avg_old_base = mean(old_base, na.rm = TRUE),
+            avg_new_base = mean(new_base, na.rm = TRUE))
+```
+
+
+## Level 
+
+```{r warning = FALSE, message = FALSE}
+salaries %>% 
+  mutate(level = as.integer(level)) %>% 
+  replace_na(list(level = 3)) %>% 
+  group_by(gender) %>% 
+  summarise(avg_level = mean(level))
+```
+
+```{r warning = FALSE, message = FALSE}
+salaries %>% 
+  mutate(level = as.integer(level)) %>% 
+  replace_na(list(level = 3)) %>% 
+  group_by(gender, level) %>% 
+  summarise(team_members = n()) %>% 
+  mutate(percent = team_members / sum(team_members)) %>% 
+  ggplot(aes(x = level, y = team_members)) +
+  geom_bar(stat = 'identity') +
+  facet_wrap(~gender) +
+  labs(x = "Level", y = "Team Members", title = "Distribution of Levels")
+```
+
+## New Hires
+
+```{r}
+new <- c('Keisha', 'Mandy', 'Sol', 'Julia J', 'Ann', 'Juliana', 'Kyle', 'Essence', 'Colleen',
+         'Jamal', 'Karel', 'Amy Lee', 'Eduardo', 'Maya', 'Ana', 'Katie G', 'Gisete', 'Joan', 
+         'Heather-Mae')
+
+salaries %>% 
+  mutate(new_hire = name %in% new) %>% 
+  filter(new_hire) %>% 
+  group_by(gender) %>% 
+  summarise(hires = n(), avg_comp = mean(total_comp))
+```
+
+
+## Family Leave
+
+```{r}
+salaries %>% 
+  group_by(gender, family_leave) %>% 
+  summarise(avg_comp = mean(total_comp))
+```
+
+
+## Gap without new hires
+
+```{r}
+new <- c('Keisha', 'Mandy', 'Sol', 'Julia J', 'Ann', 'Juliana', 'Kyle', 'Essence', 'Colleen',
+         'Jamal', 'Karel', 'Amy Lee', 'Eduardo', 'Maya', 'Ana', 'Katie G', 'Gisete', 'Joan', 
+         'Heather-Mae')
+
+salaries %>% 
+  mutate(new_hire = name %in% new) %>% 
+  filter(!new_hire) %>% 
+  group_by(gender) %>% 
+  summarise(people = n(), avg_comp = mean(total_comp))
+```
+
+```{r}
+# average raise excluding new hires
+salaries %>% 
+  mutate(new_hire = name %in% new) %>% 
+  filter(!new_hire) %>% 
+  group_by(gender) %>% 
+  summarise(avg = mean(raise_amount, na.rm = TRUE))
+```
+
+
+## Gap without raises
+
+```{r}
+salaries %>% 
+  mutate(old_comp = total_comp - raise_amount) %>% 
+  group_by(gender) %>% 
+  summarise(avg_old_comp = mean(old_comp, na.rm = TRUE))
+```
+
+
+
+## 2018 Salaries
+
+```{r eval = FALSE}
+# read data from csv
+salaries18 <- read.csv("~/Downloads/salaries18.csv", header = TRUE, stringsAsFactors = FALSE)
+```
+
+```{r}
+# save data
+# saveRDS(salaries, "2019_salaries.rds")
+
+# load data
+salaries <- readRDS("2019_salaries.rds")
+```
+
+```{r}
+# group by role type
+salaries18 %>% 
+  group_by(contributor_type, gender) %>% 
+  summarise(team_members = n(),
+            avg_salary = mean(salary))
+```
+
+```{r}
+salaries18 %>% filter(contributor_type == "People Lead")
+```
+
+```{r}
+salaries %>% filter(role_function == "leads")
+```
+
